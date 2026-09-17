@@ -1,0 +1,3 @@
+Variable / Field Name,Form Name,Field Type,Field Label,"Choices, Calculations, OR Slider Labels"
+participant_id,Demographics,text,Participant ID,
+weird_score,Demographics,mystery_type,Score,

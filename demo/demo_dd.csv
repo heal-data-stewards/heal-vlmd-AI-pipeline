@@ -1,0 +1,7 @@
+Variable / Field Name,Form Name,Field Type,Field Label,"Choices, Calculations, OR Slider Labels"
+participant_id,Demographics,text,Participant ID,
+age,Demographics,text,Age in years,
+sex,Demographics,radio,Sex at birth,"1, Male | 2, Female | 3, Unknown"
+consent_signed,Demographics,yesno,Has the participant signed the consent form?,
+visit_date,Visit Log,date,Date of visit,
+pain_score,Pain Assessment,radio,Rate your pain from 0 to 10,"0, No pain | 5, Moderate | 10, Worst possible"
