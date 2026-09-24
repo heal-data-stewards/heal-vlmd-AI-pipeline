@@ -1,0 +1,39 @@
+format_name: BACPAC_QualtricsCodebook_MASTER_CLEAN_v1.2_Feb2024_ODI_Removed_extracted
+description: Custom format for APPL_ID BACPAC_QualtricsCodebook_MASTER_CLEAN_v1.2_Feb2024_ODI_Removed_extracted
+_source:
+  appl_id: BACPAC_QualtricsCodebook_MASTER_CLEAN_v1.2_Feb2024_ODI_Removed_extracted
+  hdp_id: HDP00429
+  created: '2026-08-13'
+  source_file: BACPAC_QualtricsCodebook_MASTER_CLEAN_v1.2_Feb2024_ODI Removed_extracted.csv
+  note: Auto-generated from interactive column mapping session
+input_reader: csv
+name_column: name
+description_column: label
+title_column: null
+enum_ordered:
+  source_column: null
+  trigger_values: []
+section:
+  primary_column: section
+  fallback_column: null
+levels:
+  source_column: choices
+  format: pipe_separated
+  pair_separator: ','
+  choice_separator: '|'
+related_concepts: []
+custom_columns: []
+capture_unmapped_as_custom: true
+fixup_prompt: prompts/generic_fixup_prompt.md
+system_invariants_prompt: prompts/system_invariants_vlmd.md
+detection:
+  signature_columns:
+    strong:
+    - name
+    - label
+    supporting:
+    - choices
+    - section
+  confidence_threshold: 0.6
+  file_extensions: []
+  source_study_appl_id: BACPAC_QualtricsCodebook_MASTER_CLEAN_v1.2_Feb2024_ODI_Removed_extracted

@@ -1,0 +1,47 @@
+format_name: HDP01477_WachsLab_edited
+description: Custom format for APPL_ID HDP01477_WachsLab_edited
+_source:
+  appl_id: HDP01477_WachsLab_edited
+  hdp_id: HDP01477
+  created: '2026-09-24'
+  source_file: HDP01477_WachsLab_edited.csv
+  note: Auto-generated from interactive column mapping session
+input_reader: csv
+name_column: name
+description_column: description
+title_column: null
+type_mapping:
+  source_column: type
+  lookup:
+    string: string
+    number: number
+enum_ordered:
+  source_column: null
+  trigger_values: []
+section:
+  primary_column: section
+  fallback_column: null
+levels:
+  source_column: enumLabels
+  format: pipe_separated
+  pair_separator: '='
+  choice_separator: ;
+related_concepts: []
+custom_columns:
+- custom.unit
+- custom.details
+capture_unmapped_as_custom: true
+fixup_prompt: prompts/generic_fixup_prompt.md
+system_invariants_prompt: prompts/system_invariants_vlmd.md
+detection:
+  signature_columns:
+    strong:
+    - name
+    - description
+    supporting:
+    - type
+    - enumLabels
+    - section
+  confidence_threshold: 0.6
+  file_extensions: []
+  source_study_appl_id: HDP01477_WachsLab_edited

@@ -1,0 +1,64 @@
+format_name: VLMD_06162026
+description: Custom format for APPL_ID VLMD_06162026
+_source:
+  appl_id: VLMD_06162026
+  hdp_id: HDP01372
+  created: '2026-09-24'
+  source_file: VLMD_06162026.csv
+  note: Auto-generated from interactive column mapping session
+input_reader: csv
+name_column: Name
+description_column: Description
+title_column: null
+type_mapping:
+  source_column: Data Type
+  lookup:
+    String: string
+    Categorical: string
+    Integer: integer
+    Number: number
+    Boolean: boolean
+    Date: date
+    Datetime: datetime
+    Time: time
+enum_ordered:
+  source_column: null
+  trigger_values: []
+section:
+  primary_column: Domain
+  fallback_column: null
+levels:
+  source_column: Allowed Values
+  format: auto_detect
+  pair_separator: null
+  choice_separator: null
+value_labels_column: Value Labels
+related_concepts: []
+custom_columns:
+- Sample Response
+- Spreadsheet Column Number
+- Format
+- Missing Codes
+- Units
+- Timepoint
+- Source
+- Derived (Yes/No)
+- Derivation Description
+- Sensitive Data Flag
+- Comments
+capture_unmapped_as_custom: true
+fixup_prompt: prompts/generic_fixup_prompt.md
+system_invariants_prompt: prompts/system_invariants_vlmd.md
+detection:
+  signature_columns:
+    strong:
+    - Name
+    - Description
+    supporting:
+    - Data Type
+    - Allowed Values
+    - Domain
+    - Value Labels
+  confidence_threshold: 0.6
+  file_extensions: []
+  source_study_appl_id: VLMD_06162026
