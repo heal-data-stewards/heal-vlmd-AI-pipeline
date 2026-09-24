@@ -71,9 +71,41 @@ def run_conversational(
         from vlmd_detect import detect
 
         detection = detect(input_file, formats_dir=str(PIPELINE_DIR / "formats"), model_key=model)
+        # detection's raw "columns"/"sample_rows"/"scores" scale with the
+        # file (135 columns incl. ~118 blank "Unnamed: N" placeholders, plus
+        # full sample rows, on a real file this pipeline hit) — the frontend
+        # renders payload as-is (JSON.stringify), so passing the whole dict
+        # through turned a one-line confirmation into a wall of raw JSON.
+        # This keeps only what's actually useful for a human to review the
+        # proposed mapping against.
+        detection_summary = {
+            k: detection.get(k)
+            for k in ("format_name", "confidence", "method", "reasoning",
+                      "row_count", "column_count", "ambiguous", "column_explanations")
+        }
+        # Same bloat as custom_columns below — one entry per column, so a
+        # wide file with many blank columns produces one boilerplate
+        # explanation per blank column.
+        explanations = detection_summary.get("column_explanations") or {}
+        if len(explanations) > 10:
+            items = list(explanations.items())[:10]
+            detection_summary["column_explanations"] = dict(items)
+            detection_summary["column_explanations"]["..."] = f"and {len(explanations) - 10} more"
 
         unrecognized = detection["format_name"] is None
         if unrecognized:
+            # Display copy only — custom_columns commonly includes every
+            # blank "Unnamed: N" placeholder column (confirmed: 50 of them
+            # on a real file), which is real, correct mapping data but
+            # unreadable dumped whole into a chat bubble. The untrimmed
+            # detection["proposed_mapping"] (not this copy) is still what
+            # gets passed to save_format() below if confirmed.
+            mapping_for_display = dict(detection.get("proposed_mapping") or {})
+            custom_cols = mapping_for_display.get("custom_columns") or []
+            if len(custom_cols) > 10:
+                shown = custom_cols[:10]
+                mapping_for_display["custom_columns"] = shown + [f"... and {len(custom_cols) - 10} more"]
+
             answer = yield Prompt(
                 kind="confirm_mapping",
                 message=(
@@ -81,7 +113,7 @@ def run_conversational(
                     "at how to map its columns. Look right? (yes / no — saved as a reusable "
                     "format for this study if you confirm)"
                 ),
-                payload={"proposed_mapping": detection.get("proposed_mapping"), "raw": detection},
+                payload={"proposed_mapping": mapping_for_display, "raw": detection_summary},
             )
         else:
             answer = yield Prompt(
@@ -92,7 +124,7 @@ def run_conversational(
                     f"{detection['row_count']} rows, {detection['column_count']} columns. "
                     "Proceed with conversion? (yes / no)"
                 ),
-                payload={"format_name": detection["format_name"], "raw": detection},
+                payload={"format_name": detection["format_name"], "raw": detection_summary},
             )
 
         if str(answer).strip().lower() not in ("yes", "y", "looks good", "ok", "confirm"):
@@ -144,7 +176,23 @@ def run_conversational(
 
     converted_path = str(work_subdir / f"{file_stem}_chat_converted.json")
     lint_path = str(work_subdir / f"{file_stem}_chat_lint.json")
-    convert(input_file, format_yaml, converted_path, lint_path)
+    convert_status = convert(input_file, format_yaml, converted_path, lint_path)
+    if convert_status != 0:
+        # convert() returns 1 (and only prints why, to stderr) when the
+        # resolved mapping can't identify a name column for this file —
+        # it never writes lint_path in that case, so the unconditional
+        # read below used to raise a confusing "No such file or
+        # directory" instead of surfacing the real, already-known reason.
+        yield Prompt(
+            kind="error",
+            message=(
+                "Couldn't convert this file with the confirmed column mapping — "
+                "it doesn't identify a name column for each variable, so there's "
+                "nothing to build a data dictionary entry from. Check that the "
+                "mapping's name/description columns are correct for this file."
+            ),
+        )
+        return
     lint_records = json.loads(Path(lint_path).read_text())
 
     # ── convert phase pause — confirm what goes to the LLM ─────────────────
