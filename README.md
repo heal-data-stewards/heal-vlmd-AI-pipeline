@@ -109,7 +109,7 @@ Input file (any format)
 ### 1. Clone and create a virtual environment
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/heal-data-stewards/heal-vlmd-AI-pipeline
 cd heal-vlmd-AI-pipeline
 
 python -m venv .venv
