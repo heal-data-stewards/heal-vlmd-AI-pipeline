@@ -8,7 +8,7 @@ Part of the HEAL VLMD AI tooling suite — Phase 1 (V0, 2026).
 
 ## What this does
 
-Research studies submit data dictionaries in many formats: HBCD-specific CSVs, REDCap exports, Stata `.dta` files, plain spreadsheets. The HEAL Data Platform requires all of these to be expressed in a common schema — VLMD — before ingestion. Converting by hand is time-consuming and error-prone at scale.
+Research studies submit data dictionaries in many formats: HBCD-specific CSVs, REDCap exports, Stata `.dta` files, HEAL CDE spreadsheets, multi-sheet Excel workbooks, PDF codebooks, plain spreadsheets. The HEAL Data Platform requires all of these to be expressed in a common schema — VLMD — before ingestion. Converting by hand is time-consuming and error-prone at scale.
 
 This pipeline automates that conversion:
 
@@ -26,8 +26,8 @@ The mapping rules for each known format live in small YAML files. Adding support
 ## Quick start
 
 ```bash
-git clone <repo-url>
-cd heal-vlmd-pipeline
+git clone https://github.com/heal-data-stewards/heal-vlmd-AI-pipeline
+cd heal-vlmd-AI-pipeline
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
@@ -41,8 +41,15 @@ python examples/run_examples.py
 
 ```
 Input file (any format)
-        │
-        ▼
+          │
+          ▼
+┌───────────────────┐
+│  vlmd_pdf.py      │  Only for .pdf / .xlsx input
+│  vlmd_excel.py    │  → extracts one sheet (Excel) or LLM-parses the codebook (PDF) to a CSV
+│                   │  → the rest of the pipeline runs on that CSV
+└─────────┬─────────┘
+          │  work/{hdp-id}/{stem}_extracted.csv
+          ▼
 ┌───────────────────┐
 │  vlmd_lookup.py   │  Fetches study info from healdata.org/mds/metadata/{hdp_id}
 │                   │  → displays title, APPL_ID, PI, institution
@@ -77,7 +84,7 @@ Input file (any format)
           ▼
 ┌───────────────────┐
 │  vlmd_merge.py    │  Merges fixes, validates final document, writes VLMD JSON + CSV + metadata.yaml
-│                   │  → valid + --dest-dir → copy to {dest-dir}/{appl_id}/{hdp_id}/vlmd/
+│                   │  → valid + --dest-dir → copy to {dest-dir}/{hdp_id}/vlmd/
 │                   │  → invalid → write to output/ for inspection, exit 2 (no copy)
 └───────────────────┘
 ```
@@ -102,8 +109,8 @@ Input file (any format)
 ### 1. Clone and create a virtual environment
 
 ```bash
-git clone <repo-url>
-cd heal-vlmd-pipeline
+git clone https://github.com/heal-data-stewards/heal-vlmd-AI-pipeline
+cd heal-vlmd-AI-pipeline
 
 python -m venv .venv
 source .venv/bin/activate        # macOS / Linux
@@ -122,7 +129,7 @@ Or with `uv`:
 uv pip install -r requirements.txt
 ```
 
-`requirements.txt` includes: `pandas`, `healdata_utils`, `openai`, `anthropic`, `python-dotenv`, `tiktoken`, `pyyaml`, `ftfy`.
+`requirements.txt` includes: `pandas`, `healdata_utils`, `openai`, `anthropic`, `python-dotenv`, `tiktoken`, `pyyaml`, `ftfy`, `openpyxl` (Excel input), `pdfplumber` (PDF input).
 
 For Stata (`.dta`) file support, also install:
 
@@ -158,7 +165,7 @@ Credentials are only needed for the LLM fixup step. Format detection and convers
 
 ## Command-line usage
 
-All commands assume your virtual environment is active and you are in the `heal-vlmd-pipeline/` directory.
+All commands assume your virtual environment is active and you are in the `heal-vlmd-AI-pipeline/` directory.
 
 ---
 
@@ -168,7 +175,7 @@ All commands assume your virtual environment is active and you are in the `heal-
 python run_pipeline.py \
   --input  "/path/to/data_dictionary.csv" \
   --hdp-id HDP01258 \
-  --study-label HBCD_DataDictionary
+  --name HBCD_DataDictionary
 ```
 
 Providing `--hdp-id` is enough to get started. The pipeline fetches APPL_ID, study title, PI, and institution from the HEAL platform, displays a confirmation card, and waits for your approval before proceeding.
@@ -176,7 +183,7 @@ Providing `--hdp-id` is enough to get started. The pipeline fetches APPL_ID, stu
 Output is written to a nested directory matching the `heal-data-dictionaries` repo convention:
 ```
 output/HDP01258/
-  input/HBCD_datadictionary.csv       ← copy of the original input
+  input/HBCD_datadictionary.csv       ← copy of the input (the extracted CSV for Excel/PDF input)
   vlmd/HDP01258_HBCD_datadictionary/
     HDP01258_HBCD_datadictionary.vlmd.json
     HDP01258_HBCD_datadictionary.vlmd.csv
@@ -184,7 +191,7 @@ output/HDP01258/
 work/HDP01258/
   vlmd_converted.json
   vlmd_lint_report.json               ← converter flags (fields needing LLM attention)
-  vlmd_validation_report.json         ← schema validation results
+  vlmd_validation_report.json         ← schema validation results, before LLM fixup
   vlmd_llm_cleanup.json               ← per-field LLM reasoning log (what changed and why)
   vlmd_llm_fixes.json
   vlmd_llm_fixes.checkpoint.json
@@ -194,7 +201,7 @@ work/HDP01258/
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--input FILE` | required | Path to input file (CSV or .dta) |
+| `--input FILE` | required | Path to input file: CSV, `.dta`, `.xlsx`, or `.pdf` (see *Excel and PDF input* below) |
 | `--hdp-id ID` | _(empty)_ | HEAL Data Platform project ID — triggers platform lookup |
 | `--appl-id ID` | auto-fetched | Override the APPL_ID if the platform lookup is wrong |
 | `--title TEXT` | auto-fetched | Override the study title |
@@ -202,11 +209,23 @@ work/HDP01258/
 | `--format YAML` | auto-detect | Skip format detection, use this format YAML |
 | `--model KEY` | `azure-gpt-4.1-mini` | LLM model key (see Models section) |
 | `--output-dir DIR` | `output/{hdp-id}/` | Base output directory |
-| `--dest-dir DIR` | _(none)_ | Root of destination repository; files copied to `{dest-dir}/{hdp-id}/vlmd/{stem}/` and `{dest-dir}/{hdp-id}/input/` after validation |
-| `--yes` / `-y` | off | Skip study confirmation prompt (for scripted/bot use) |
+| `--dest-dir DIR` | _(none)_ | Root of destination repository; files copied to `{dest-dir}/{hdp-id}/vlmd/{stem}/` and `{dest-dir}/{hdp-id}/input/` after validation. Requires `--hdp-id`; without it the copy is skipped with a note |
+| `--no-confirm` | off | Skip the study confirmation prompt (for scripted/bot use) |
+| `--yes` | off | Non-interactive: default any undecided short/placeholder description to `leave_as_is` instead of stopping with exit 3 (see below) |
+| `--sheet NAME` | largest sheet | Which sheet to use for `.xlsx` input (default: the sheet with the most cells) |
+| `--study-label TEXT` | `DataDictionary` | Legacy, no effect: output naming uses `--name`. Kept for backwards-compatible invocations |
 | `--skip-llm` | off | Skip LLM fixup even if validation or converter flags errors |
 | `--no-detect` | off | Skip format detection (requires `--format`) |
 | `--description-review-decisions PATH` | _(none)_ | Decisions file for short/placeholder descriptions (see below) |
+
+**Exit codes:**
+
+| Code | Meaning | What to do |
+|------|---------|------------|
+| `0` | Valid VLMD written (and copied to `--dest-dir` if given with `--hdp-id`; without `--hdp-id` the copy is skipped but the exit code is still 0) | Done |
+| `1` | Error, study not confirmed, or unknown format | For an unknown format: review `work/{hdp-id}/vlmd_proposed_mapping.json`, save it with `vlmd_interview.py save`, re-run with `--format` |
+| `2` | Final output failed schema validation | Files are in `output/` for inspection but were not copied to `--dest-dir`. The first five errors are printed under *Step 5: Merge*; they are not saved to a file. `work/{hdp-id}/vlmd_validation_report.json` is from before LLM fixup, so it may not list them |
+| `3` | Short/placeholder descriptions need a human decision | Edit `work/{hdp-id}/vlmd_description_review.json`, re-run with `--description-review-decisions` |
 
 **Examples:**
 
@@ -222,7 +241,7 @@ python run_pipeline.py \
   --input  "/path/to/HBCD_datadictionary.csv" \
   --hdp-id HDP01258 \
   --format formats/hbcd.yaml \
-  --study-label HBCD_DataDictionary
+  --name HBCD_DataDictionary
 
 # Copy validated output to destination repository
 python run_pipeline.py \
@@ -231,8 +250,14 @@ python run_pipeline.py \
   --name SCOPE_DataDictionary \
   --dest-dir /path/to/heal-data-dictionaries/data-dictionaries
 
-# Non-interactive / scripted — skip confirmation
-python run_pipeline.py --input file.csv --hdp-id HDP01258 --yes
+# Non-interactive / scripted — no prompts, never stops for description review
+python run_pipeline.py --input file.csv --hdp-id HDP01258 --no-confirm --yes
+
+# Excel workbook — picks the largest sheet unless --sheet is given
+python run_pipeline.py --input codebook.xlsx --sheet "Data Dictionary" --hdp-id HDP01011
+
+# PDF codebook — LLM extraction, so credentials are required
+python run_pipeline.py --input codebook.pdf --hdp-id HDP01258
 
 # No network access — provide APPL_ID and title manually
 python run_pipeline.py \
@@ -243,6 +268,17 @@ python run_pipeline.py \
 # Fastest — no LLM, deterministic only
 python run_pipeline.py --input file.csv --hdp-id HDP01258 --skip-llm
 ```
+
+---
+
+### Excel and PDF input
+
+`run_pipeline.py` dispatches on the input file's extension before anything else runs:
+
+- **`.xlsx`** — `vlmd_excel.py` writes one sheet to `work/{hdp-id}/{stem}_extracted.csv`. By default it picks the sheet with the most cells, since most workbooks pair one real dictionary sheet with small notes or legend sheets; pass `--sheet NAME` when that guess is wrong. The extracted CSV can be any known format (REDCap, CDE, a custom study mapping), so format detection runs on it as usual. No LLM call. Legacy `.xls` workbooks are not supported (`openpyxl` can't read them); re-save them as `.xlsx` first.
+- **`.pdf`** — `vlmd_pdf.py` pulls the tables out of each page with `pdfplumber` and asks the LLM to parse them into variable rows, so this step needs credentials. The extracted CSV always uses `generic-csv.yaml` column names (`name`, `label`, `choices`, `section`), so detection is skipped unless `--format` is given.
+
+Both scripts can also be run standalone (`python vlmd_excel.py --help`, `python vlmd_pdf.py --help`) to inspect the intermediate CSV before converting it.
 
 ---
 
@@ -453,9 +489,13 @@ formats/
   hbcd.yaml         HBCD study data dictionary (25-column CSV)
   redcap.yaml       REDCap data dictionary export
   stata.yaml        Stata .dta files (via pyreadstat)
+  cde.yaml          HEAL Common Data Element spreadsheets ("CDE Name" / "Variable Name" / "Permissible Values")
   generic-csv.yaml  Fallback: auto-detects common column names
-  {applid}.yaml     Custom: saved by the interview flow for unknown formats
+  {applid}.yaml     Study-specific: saved by the interview flow for unknown formats
+  HDP*.yaml, ...    Study-specific mappings saved under other names (same mechanism)
 ```
+
+The study-specific YAMLs are committed on purpose: each one records a mapping a person confirmed, and its `detection.signature_columns` makes the next file from that study auto-detect.
 
 ### Format YAML anatomy
 
@@ -556,7 +596,7 @@ When detection fails (no known format matches and LLM can't confidently identify
 
 1. Calls the LLM with column names and 5 sample rows
 2. Proposes a column-to-VLMD mapping
-3. Exits with code `1` and writes `work/vlmd_detection.json` with `proposed_mapping`
+3. Exits with code `1` and writes `work/{hdp-id}/vlmd_detection.json` with `proposed_mapping`, plus the mapping alone in `work/{hdp-id}/vlmd_proposed_mapping.json` for editing
 
 A bot or developer then:
 - Presents the proposed mapping to the user
@@ -607,9 +647,10 @@ The pipeline is designed from the start to be driven by a conversational interfa
 | Script | What a bot calls it for | Structured output |
 |--------|------------------------|-------------------|
 | `vlmd_lookup.py --json` | Fetch study info and APPL_ID before asking the user anything | stdout JSON |
-| `vlmd_detect.py --output-json` | Identify the file format | `work/vlmd_detection.json` |
+| `vlmd_detect.py --input FILE --output-json PATH` | Identify the file format | JSON at `PATH` (`run_pipeline.py` uses `work/{hdp-id}/vlmd_detection.json`) |
 | `vlmd_interview.py save` | Save a user-confirmed mapping after conversation | `formats/{applid}.yaml` |
-| `run_pipeline.py` | Run the full conversion once study and format are confirmed | Files in `output/` |
+| `run_pipeline.py` | Run the full conversion once study and format are confirmed | Files in `output/`, exit code (table above) |
+| `chat_pipeline.py` | Prototype of the same stages as a Python generator that pauses at checkpoints and resumes via `.send()`; the basis for the vlmd-app `/chat` endpoints | `Prompt` objects |
 
 ### Conversation state machine
 
@@ -640,9 +681,17 @@ vlmd_detect.py                                                         │
                                run_pipeline.py --format formats/{applid}.yaml
 ```
 
-### Future MCP server
+### Conversational prototype
 
-An MCP server would expose these tools, letting any MCP-compatible client (Claude Desktop, a web chatbot, etc.) drive the pipeline conversationally:
+`chat_pipeline.py` reorders the same stage functions into a generator with pause points (`ingest -> mapping* -> convert -> confirm_llm_columns* -> fixup -> validate -> merge`). It is a prototype for the vlmd-app chat endpoints, not a replacement for `run_pipeline.py`, which stays the batch entry point. Try it in a terminal with:
+
+```bash
+python chat_pipeline.py --input demo/demo_dd.csv --hdp-id DEMO001
+```
+
+### Possible MCP server
+
+An MCP server could expose these tools, letting any MCP-compatible client (Claude Desktop, a web chatbot, etc.) drive the pipeline conversationally. Nothing below is implemented:
 
 ```python
 # mcp_server.py (stub — not yet implemented)
@@ -675,7 +724,7 @@ Because the pipeline is pure Python, the cleanest integration is a direct import
 
 ```python
 import sys
-sys.path.insert(0, "/path/to/heal-vlmd-pipeline")
+sys.path.insert(0, "/path/to/heal-vlmd-AI-pipeline")
 
 from vlmd_lookup import lookup, confirm_study
 from vlmd_detect import detect
@@ -699,7 +748,8 @@ exit_code = run(
     model="azure-gpt-4.1-mini",
     skip_llm=False,
     no_detect=True,
-    yes=True,                          # skip interactive confirmation
+    no_confirm=True,                   # skip the study confirmation prompt
+    yes=True,                          # never stop for description review
     output_dir=Path("output"),
     dest_dir=Path("/path/to/CleanedDataDictionaries"),
 )
@@ -710,15 +760,20 @@ exit_code = run(
 ## File structure
 
 ```
-heal-vlmd-pipeline/
+heal-vlmd-AI-pipeline/
 │
 ├── README.md                    This file
+├── AGENTS.md                    Orientation for AI coding agents: commands and architecture
+├── NDAR_CONVERSION_NOTES.md     Design notes for a future NDAR converter (nothing implemented yet)
 ├── requirements.txt             Python dependencies
 ├── .env.template                Copy to .env and fill in API keys
 ├── .gitignore
 │
 ├── run_pipeline.py              One-command orchestrator (pure Python)
+├── chat_pipeline.py             Conversational prototype: same stages as a resumable generator
 │
+├── vlmd_excel.py                Excel pre-processor — one sheet → CSV (no LLM)
+├── vlmd_pdf.py                  PDF pre-processor — pdfplumber + LLM → generic-csv CSV
 ├── vlmd_lookup.py               HEAL platform lookup — fetches APPL_ID, title, PI
 ├── vlmd_detect.py               Format detection (rule-based + LLM fallback)
 ├── vlmd_convert.py              YAML-driven field mapper (no LLM)
@@ -729,13 +784,15 @@ heal-vlmd-pipeline/
 ├── vlmd_merge.py                Write VLMD JSON + CSV + metadata.yaml; gates copy on validation
 ├── llm_client.py                Azure / Anthropic model registry
 ├── cli_ui.py                    Shared terminal styling: progress bars, ACTION REQUIRED blocks
+├── probe_azure.py               Diagnostic: tries endpoint shapes and deployment names from .env
 │
 ├── formats/                     Format mapping specs (one YAML per format)
 │   ├── hbcd.yaml
 │   ├── redcap.yaml
 │   ├── stata.yaml
+│   ├── cde.yaml
 │   ├── generic-csv.yaml
-│   └── {applid}.yaml            Created by vlmd_interview.py for unknown formats
+│   └── {applid}.yaml, HDP*.yaml Study-specific mappings saved by vlmd_interview.py
 │
 ├── prompts/                     LLM prompt files (referenced from format YAMLs)
 │   ├── system_invariants_vlmd.md
@@ -743,7 +800,10 @@ heal-vlmd-pipeline/
 │   ├── hbcd_fixup_prompt.md
 │   ├── redcap_fixup_prompt.md
 │   ├── generic_fixup_prompt.md
+│   ├── pdf_extract_prompt.md
 │   └── description_triage_prompt.md
+│
+├── demo/                        Small CSVs for driving chat_pipeline.py by hand
 │
 ├── examples/                    Sample inputs and end-to-end demo
 │   ├── hbcd_sample.csv          Synthetic HBCD dictionary (8 rows, 25 columns)
@@ -752,17 +812,22 @@ heal-vlmd-pipeline/
 │   ├── run_examples.py          Runs all three formats, validates output, no credentials needed
 │   └── output/                  Created by run_examples.py (gitignored)
 │
-├── work/                        Intermediate files — gitignored
+├── work/{hdp-id}/               Intermediate files — gitignored
+│   ├── {stem}_extracted.csv     Only for Excel/PDF input
+│   ├── vlmd_detection.json
 │   ├── vlmd_converted.json
 │   ├── vlmd_lint_report.json
 │   ├── vlmd_validation_report.json
+│   ├── vlmd_description_review.json
 │   ├── vlmd_llm_fixes.json
 │   └── vlmd_llm_fixes.checkpoint.json
 │
-└── output/                      Final VLMD files — gitignored
-    ├── {applid}_{label}.vlmd.json
-    ├── {applid}_{label}.vlmd.csv
-    └── metadata.yaml
+└── output/{hdp-id}/             Final VLMD files — gitignored
+    ├── input/                   Copy of the input (the extracted CSV for Excel/PDF input)
+    └── vlmd/{hdp-id}_{name}/
+        ├── {hdp-id}_{name}.vlmd.json
+        ├── {hdp-id}_{name}.vlmd.csv
+        └── metadata.yaml
 ```
 
 ---
