@@ -84,7 +84,7 @@ Input file (any format)
           ▼
 ┌───────────────────┐
 │  vlmd_merge.py    │  Merges fixes, validates final document, writes VLMD JSON + CSV + metadata.yaml
-│                   │  → valid + --dest-dir → copy to {dest-dir}/{appl_id}/{hdp_id}/vlmd/
+│                   │  → valid + --dest-dir → copy to {dest-dir}/{hdp_id}/vlmd/
 │                   │  → invalid → write to output/ for inspection, exit 2 (no copy)
 └───────────────────┘
 ```
@@ -209,7 +209,7 @@ work/HDP01258/
 | `--format YAML` | auto-detect | Skip format detection, use this format YAML |
 | `--model KEY` | `azure-gpt-4.1-mini` | LLM model key (see Models section) |
 | `--output-dir DIR` | `output/{hdp-id}/` | Base output directory |
-| `--dest-dir DIR` | _(none)_ | Root of destination repository; files copied to `{dest-dir}/{hdp-id}/vlmd/{stem}/` and `{dest-dir}/{hdp-id}/input/` after validation |
+| `--dest-dir DIR` | _(none)_ | Root of destination repository; files copied to `{dest-dir}/{hdp-id}/vlmd/{stem}/` and `{dest-dir}/{hdp-id}/input/` after validation. Requires `--hdp-id`; without it the copy is skipped with a note |
 | `--no-confirm` | off | Skip the study confirmation prompt (for scripted/bot use) |
 | `--yes` | off | Non-interactive: default any undecided short/placeholder description to `leave_as_is` instead of stopping with exit 3 (see below) |
 | `--sheet NAME` | largest sheet | Which sheet to use for `.xlsx` input (default: the sheet with the most cells) |
@@ -222,7 +222,7 @@ work/HDP01258/
 
 | Code | Meaning | What to do |
 |------|---------|------------|
-| `0` | Valid VLMD written (and copied to `--dest-dir` if given) | Done |
+| `0` | Valid VLMD written (and copied to `--dest-dir` if given with `--hdp-id`; without `--hdp-id` the copy is skipped but the exit code is still 0) | Done |
 | `1` | Error, study not confirmed, or unknown format | For an unknown format: review `work/{hdp-id}/vlmd_proposed_mapping.json`, save it with `vlmd_interview.py save`, re-run with `--format` |
 | `2` | Final output failed schema validation | Files are in `output/` for inspection but were not copied to `--dest-dir`; see `work/{hdp-id}/vlmd_validation_report.json` |
 | `3` | Short/placeholder descriptions need a human decision | Edit `work/{hdp-id}/vlmd_description_review.json`, re-run with `--description-review-decisions` |
