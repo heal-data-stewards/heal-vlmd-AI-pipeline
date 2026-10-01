@@ -647,7 +647,7 @@ The pipeline is designed from the start to be driven by a conversational interfa
 | Script | What a bot calls it for | Structured output |
 |--------|------------------------|-------------------|
 | `vlmd_lookup.py --json` | Fetch study info and APPL_ID before asking the user anything | stdout JSON |
-| `vlmd_detect.py --output-json` | Identify the file format | `work/{hdp-id}/vlmd_detection.json` |
+| `vlmd_detect.py --input FILE --output-json PATH` | Identify the file format | JSON at `PATH` (`run_pipeline.py` uses `work/{hdp-id}/vlmd_detection.json`) |
 | `vlmd_interview.py save` | Save a user-confirmed mapping after conversation | `formats/{applid}.yaml` |
 | `run_pipeline.py` | Run the full conversion once study and format are confirmed | Files in `output/`, exit code (table above) |
 | `chat_pipeline.py` | Prototype of the same stages as a Python generator that pauses at checkpoints and resumes via `.send()`; the basis for the vlmd-app `/chat` endpoints | `Prompt` objects |
