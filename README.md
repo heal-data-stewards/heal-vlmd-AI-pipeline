@@ -191,7 +191,7 @@ output/HDP01258/
 work/HDP01258/
   vlmd_converted.json
   vlmd_lint_report.json               ← converter flags (fields needing LLM attention)
-  vlmd_validation_report.json         ← schema validation results
+  vlmd_validation_report.json         ← schema validation results, before LLM fixup
   vlmd_llm_cleanup.json               ← per-field LLM reasoning log (what changed and why)
   vlmd_llm_fixes.json
   vlmd_llm_fixes.checkpoint.json
@@ -224,7 +224,7 @@ work/HDP01258/
 |------|---------|------------|
 | `0` | Valid VLMD written (and copied to `--dest-dir` if given with `--hdp-id`; without `--hdp-id` the copy is skipped but the exit code is still 0) | Done |
 | `1` | Error, study not confirmed, or unknown format | For an unknown format: review `work/{hdp-id}/vlmd_proposed_mapping.json`, save it with `vlmd_interview.py save`, re-run with `--format` |
-| `2` | Final output failed schema validation | Files are in `output/` for inspection but were not copied to `--dest-dir`; see `work/{hdp-id}/vlmd_validation_report.json` |
+| `2` | Final output failed schema validation | Files are in `output/` for inspection but were not copied to `--dest-dir`. The first five errors are printed under *Step 5: Merge*; they are not saved to a file. `work/{hdp-id}/vlmd_validation_report.json` is from before LLM fixup, so it may not list them |
 | `3` | Short/placeholder descriptions need a human decision | Edit `work/{hdp-id}/vlmd_description_review.json`, re-run with `--description-review-decisions` |
 
 **Examples:**
