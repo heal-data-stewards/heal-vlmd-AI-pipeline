@@ -27,7 +27,7 @@ The mapping rules for each known format live in small YAML files. Adding support
 
 ```bash
 git clone <repo-url>
-cd heal-vlmd-pipeline
+cd heal-vlmd-AI-pipeline
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
@@ -103,7 +103,7 @@ Input file (any format)
 
 ```bash
 git clone <repo-url>
-cd heal-vlmd-pipeline
+cd heal-vlmd-AI-pipeline
 
 python -m venv .venv
 source .venv/bin/activate        # macOS / Linux
@@ -143,7 +143,7 @@ cp .env.template .env
 
 # Azure AI Foundry — primary LLM backend for HEAL
 AZURE_OPENAI_API_KEY=<your-key>
-AZURE_OPENAI_ENDPOINT=https://<your-resource>.cognitiveservices.azure.com/
+AZURE_OPENAI_ENDPOINT=<your-openai-endpoint>
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 
 # Anthropic — optional alternative
@@ -158,7 +158,7 @@ Credentials are only needed for the LLM fixup step. Format detection and convers
 
 ## Command-line usage
 
-All commands assume your virtual environment is active and you are in the `heal-vlmd-pipeline/` directory.
+All commands assume your virtual environment is active and you are in the `heal-vlmd-AI-pipeline/` directory.
 
 ---
 
@@ -675,7 +675,7 @@ Because the pipeline is pure Python, the cleanest integration is a direct import
 
 ```python
 import sys
-sys.path.insert(0, "/path/to/heal-vlmd-pipeline")
+sys.path.insert(0, "/path/to/heal-vlmd-AI-pipeline")
 
 from vlmd_lookup import lookup, confirm_study
 from vlmd_detect import detect
@@ -710,7 +710,7 @@ exit_code = run(
 ## File structure
 
 ```
-heal-vlmd-pipeline/
+heal-vlmd-AI-pipeline/
 │
 ├── README.md                    This file
 ├── requirements.txt             Python dependencies
