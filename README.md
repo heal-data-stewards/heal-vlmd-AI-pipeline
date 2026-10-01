@@ -44,7 +44,7 @@ Input file (any format)
           │
           ▼
 ┌───────────────────┐
-│  vlmd_pdf.py      │  Only for .pdf / .xlsx / .xls input
+│  vlmd_pdf.py      │  Only for .pdf / .xlsx input
 │  vlmd_excel.py    │  → extracts one sheet (Excel) or LLM-parses the codebook (PDF) to a CSV
 │                   │  → the rest of the pipeline runs on that CSV
 └─────────┬─────────┘
@@ -201,7 +201,7 @@ work/HDP01258/
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--input FILE` | required | Path to input file: CSV, `.dta`, `.xlsx`/`.xls`, or `.pdf` (see *Excel and PDF input* below) |
+| `--input FILE` | required | Path to input file: CSV, `.dta`, `.xlsx`, or `.pdf` (see *Excel and PDF input* below) |
 | `--hdp-id ID` | _(empty)_ | HEAL Data Platform project ID — triggers platform lookup |
 | `--appl-id ID` | auto-fetched | Override the APPL_ID if the platform lookup is wrong |
 | `--title TEXT` | auto-fetched | Override the study title |
@@ -212,7 +212,7 @@ work/HDP01258/
 | `--dest-dir DIR` | _(none)_ | Root of destination repository; files copied to `{dest-dir}/{hdp-id}/vlmd/{stem}/` and `{dest-dir}/{hdp-id}/input/` after validation |
 | `--no-confirm` | off | Skip the study confirmation prompt (for scripted/bot use) |
 | `--yes` | off | Non-interactive: default any undecided short/placeholder description to `leave_as_is` instead of stopping with exit 3 (see below) |
-| `--sheet NAME` | largest sheet | Which sheet to use for `.xlsx`/`.xls` input (default: the sheet with the most cells) |
+| `--sheet NAME` | largest sheet | Which sheet to use for `.xlsx` input (default: the sheet with the most cells) |
 | `--study-label TEXT` | `DataDictionary` | Legacy, no effect: output naming uses `--name`. Kept for backwards-compatible invocations |
 | `--skip-llm` | off | Skip LLM fixup even if validation or converter flags errors |
 | `--no-detect` | off | Skip format detection (requires `--format`) |
@@ -275,7 +275,7 @@ python run_pipeline.py --input file.csv --hdp-id HDP01258 --skip-llm
 
 `run_pipeline.py` dispatches on the input file's extension before anything else runs:
 
-- **`.xlsx` / `.xls`** — `vlmd_excel.py` writes one sheet to `work/{hdp-id}/{stem}_extracted.csv`. By default it picks the sheet with the most cells, since most workbooks pair one real dictionary sheet with small notes or legend sheets; pass `--sheet NAME` when that guess is wrong. The extracted CSV can be any known format (REDCap, CDE, a custom study mapping), so format detection runs on it as usual. No LLM call.
+- **`.xlsx`** — `vlmd_excel.py` writes one sheet to `work/{hdp-id}/{stem}_extracted.csv`. By default it picks the sheet with the most cells, since most workbooks pair one real dictionary sheet with small notes or legend sheets; pass `--sheet NAME` when that guess is wrong. The extracted CSV can be any known format (REDCap, CDE, a custom study mapping), so format detection runs on it as usual. No LLM call. Legacy `.xls` workbooks are not supported (`openpyxl` can't read them); re-save them as `.xlsx` first.
 - **`.pdf`** — `vlmd_pdf.py` pulls the tables out of each page with `pdfplumber` and asks the LLM to parse them into variable rows, so this step needs credentials. The extracted CSV always uses `generic-csv.yaml` column names (`name`, `label`, `choices`, `section`), so detection is skipped unless `--format` is given.
 
 Both scripts can also be run standalone (`python vlmd_excel.py --help`, `python vlmd_pdf.py --help`) to inspect the intermediate CSV before converting it.
