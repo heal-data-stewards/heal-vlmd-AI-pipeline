@@ -41,8 +41,8 @@ python examples/run_examples.py
 
 ```
 Input file (any format)
-        │
-        ▼
+          │
+          ▼
 ┌───────────────────┐
 │  vlmd_pdf.py      │  Only for .pdf / .xlsx / .xls input
 │  vlmd_excel.py    │  → extracts one sheet (Excel) or LLM-parses the codebook (PDF) to a CSV
