@@ -26,7 +26,7 @@ The mapping rules for each known format live in small YAML files. Adding support
 ## Quick start
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/heal-data-stewards/heal-vlmd-AI-pipeline
 cd heal-vlmd-AI-pipeline
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
