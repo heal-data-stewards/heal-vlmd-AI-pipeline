@@ -183,7 +183,7 @@ Providing `--hdp-id` is enough to get started. The pipeline fetches APPL_ID, stu
 Output is written to a nested directory matching the `heal-data-dictionaries` repo convention:
 ```
 output/HDP01258/
-  input/HBCD_datadictionary.csv       ← copy of the original input
+  input/HBCD_datadictionary.csv       ← copy of the input (the extracted CSV for Excel/PDF input)
   vlmd/HDP01258_HBCD_datadictionary/
     HDP01258_HBCD_datadictionary.vlmd.json
     HDP01258_HBCD_datadictionary.vlmd.csv
@@ -823,7 +823,7 @@ heal-vlmd-AI-pipeline/
 │   └── vlmd_llm_fixes.checkpoint.json
 │
 └── output/{hdp-id}/             Final VLMD files — gitignored
-    ├── input/                   Copy of the original input
+    ├── input/                   Copy of the input (the extracted CSV for Excel/PDF input)
     └── vlmd/{hdp-id}_{name}/
         ├── {hdp-id}_{name}.vlmd.json
         ├── {hdp-id}_{name}.vlmd.csv
