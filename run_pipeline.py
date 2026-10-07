@@ -203,6 +203,7 @@ def run(
     no_detect: bool = False,
     output_dir: Path = OUTPUT_DIR,
     no_confirm: bool = False,
+    yes: bool = False,
     dest_dir: Path | None = None,
     description_review_decisions: str | None = None,
     sheet: str | None = None,
@@ -383,7 +384,7 @@ def run(
     if needs_fixup and not skip_llm:
         convert_lint_records, gate_exit = _apply_description_review_gate(
             convert_lint_records, convert_lint_path, work_subdir,
-            description_review_decisions, no_confirm, model,
+            description_review_decisions, yes, model,
         )
         if gate_exit is not None:
             return gate_exit
@@ -573,6 +574,7 @@ Examples:
         no_detect=args.no_detect,
         output_dir=output_dir,
         no_confirm=args.no_confirm,
+        yes=args.yes,
         dest_dir=Path(args.dest_dir) if args.dest_dir else None,
         description_review_decisions=args.description_review_decisions,
         sheet=args.sheet,
