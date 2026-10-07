@@ -79,7 +79,7 @@ def _get_azure_client():
         # standard OpenAI client with base_url (no api-version needed).
         # Classic .openai.azure.com or .services.ai.azure.com endpoints use
         # AzureOpenAI; strip any trailing /openai to avoid doubling the path.
-        if "/v1" in endpoint:
+        if endpoint.endswith("/v1"):
             _azure_client = OpenAI(
                 api_key=key,
                 base_url=endpoint,
