@@ -439,14 +439,17 @@ def run(
         file_stem=file_stem,
         input_filename=Path(input_file).name,
     )
-    if rc != 0:
-        return rc
 
     # ── Copy input file to output/input/ ──────────────────────────────────────
+    # Before the rc check, so a validation failure (exit 2) still leaves the
+    # full output layout for inspection.
     src_input = Path(input_file)
     if src_input.exists():
         shutil.copy2(src_input, input_copy_dir / src_input.name)
         print(f"  Input  → {input_copy_dir / src_input.name}", flush=True)
+
+    if rc != 0:
+        return rc
 
     # ── Copy to destination repository (optional) ─────────────────────────────
     if dest_dir and hdp_id:
