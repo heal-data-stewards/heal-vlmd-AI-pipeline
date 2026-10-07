@@ -129,7 +129,7 @@ Or with `uv`:
 uv pip install -r requirements.txt
 ```
 
-`requirements.txt` includes: `pandas`, `healdata_utils`, `openai`, `anthropic`, `python-dotenv`, `tiktoken`, `pyyaml`, `ftfy`, `openpyxl` (Excel input), `pdfplumber` (PDF input).
+`requirements.txt` includes: `pandas`, `healdata_utils`, `openai`, `anthropic`, `python-dotenv`, `tiktoken`, `pyyaml`, `ftfy`, `imagehash` (not imported here, but `healdata_utils` needs it to validate), `openpyxl` (Excel input), `pdfplumber` (PDF input).
 
 For Stata (`.dta`) file support, also install:
 
@@ -224,8 +224,10 @@ work/HDP01258/
 |------|---------|------------|
 | `0` | Valid VLMD written (and copied to `--dest-dir` if given with `--hdp-id`; without `--hdp-id` the copy is skipped but the exit code is still 0) | Done |
 | `1` | Error, study not confirmed, or unknown format | For an unknown format: review `work/{hdp-id}/vlmd_proposed_mapping.json`, save it with `vlmd_interview.py save`, re-run with `--format` |
-| `2` | Final output failed schema validation | Files are in `output/` for inspection but were not copied to `--dest-dir`. The first five errors are printed under *Step 5: Merge*; they are not saved to a file. `work/{hdp-id}/vlmd_validation_report.json` is from before LLM fixup, so it may not list them |
+| `2` | Final output failed schema validation, or the validator couldn't run (e.g. `healdata_utils` failed to import) | Files, including the input copy, are in `output/` for inspection but were not copied to `--dest-dir`. The first five errors, or why the validator couldn't run, are printed under *Step 5: Merge*; they are not saved to a file. `work/{hdp-id}/vlmd_validation_report.json` is from before LLM fixup, so it may not list them |
 | `3` | Short/placeholder descriptions need a human decision | Edit `work/{hdp-id}/vlmd_description_review.json`, re-run with `--description-review-decisions` |
+
+If PDF/Excel extraction, conversion or LLM fixup fails, `run_pipeline.py` exits with that stage's own non-zero code; treat any code not listed here as an error.
 
 **Examples:**
 
