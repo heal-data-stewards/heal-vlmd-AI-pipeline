@@ -5,6 +5,9 @@ anthropic>=0.40
 python-dotenv>=1.0
 tiktoken>=0.7
 pyyaml>=6.0
+# Not imported here: healdata_utils -> visions imports imagehash without declaring it,
+# so validation fails to import without it.
+imagehash>=4.3
 ftfy>=6.3
 pdfplumber>=0.10
 openpyxl>=3.1
