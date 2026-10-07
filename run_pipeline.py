@@ -507,8 +507,8 @@ Examples:
   python run_pipeline.py --input data_dict.csv --hdp-id HDP01258 \\
     --format formats/hbcd.yaml --name HBCD_datadictionary
 
-  # Non-interactive / scripted use
-  python run_pipeline.py --input data_dict.csv --hdp-id HDP01258 --no-confirm
+  # Non-interactive / scripted use (no study confirmation, no stop for description review)
+  python run_pipeline.py --input data_dict.csv --hdp-id HDP01258 --no-confirm --yes
 
   # Skip LLM (deterministic only)
   python run_pipeline.py --input data_dict.csv --hdp-id HDP01258 --skip-llm
