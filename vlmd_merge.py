@@ -182,8 +182,10 @@ def validate_output(vlmd_doc: dict) -> bool:
                 print(f"    ... and {len(errors) - 5} more", flush=True)
         return is_valid
     except Exception as e:
-        print(f"  WARNING: validation skipped ({e})", flush=True)
-        return True
+        # Fail closed: a validator that can't run (e.g. healdata_utils missing
+        # a transitive dependency) must not let unvalidated output through.
+        print(f"  ERROR: validation could not run ({e})", flush=True)
+        return False
 
 
 def merge(converted_path: str, fixes_path: str | None, output_dir: str,
@@ -246,7 +248,8 @@ def merge(converted_path: str, fixes_path: str | None, output_dir: str,
 
     if validate and not validation_passed:
         print(
-            bold_red("ERROR: Final VLMD document failed schema validation.", stream=sys.stderr) + "\n"
+            bold_red("ERROR: Final VLMD document failed (or could not run) schema validation.",
+                     stream=sys.stderr) + "\n"
             f"       Output written to {out} for inspection.\n"
             "       Fix validation errors before copying to the final repository.",
             file=sys.stderr, flush=True,

@@ -23,8 +23,8 @@ DEPLOYMENTS = [
 print(f"Endpoint: {ENDPOINT}")
 print(f"Key set:  {'yes' if KEY else 'NO — check .env'}\n")
 
-# /v1 endpoints use the standard OpenAI-compatible client (no api-version)
-if "/v1" in ENDPOINT:
+# Endpoints ending in /v1 use the standard OpenAI-compatible client (no api-version)
+if ENDPOINT.rstrip("/").endswith("/v1"):
     print("Detected /v1 endpoint — using standard OpenAI client\n")
     client = OpenAI(api_key=KEY, base_url=ENDPOINT, timeout=10.0, max_retries=0)
 

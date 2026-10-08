@@ -203,6 +203,7 @@ def run(
     no_detect: bool = False,
     output_dir: Path = OUTPUT_DIR,
     no_confirm: bool = False,
+    yes: bool = False,
     dest_dir: Path | None = None,
     description_review_decisions: str | None = None,
     sheet: str | None = None,
@@ -383,7 +384,7 @@ def run(
     if needs_fixup and not skip_llm:
         convert_lint_records, gate_exit = _apply_description_review_gate(
             convert_lint_records, convert_lint_path, work_subdir,
-            description_review_decisions, no_confirm, model,
+            description_review_decisions, yes, model,
         )
         if gate_exit is not None:
             return gate_exit
@@ -438,14 +439,17 @@ def run(
         file_stem=file_stem,
         input_filename=Path(input_file).name,
     )
-    if rc != 0:
-        return rc
 
     # ── Copy input file to output/input/ ──────────────────────────────────────
+    # Before the rc check, so a validation failure (exit 2) still leaves the
+    # full output layout for inspection.
     src_input = Path(input_file)
     if src_input.exists():
         shutil.copy2(src_input, input_copy_dir / src_input.name)
         print(f"  Input  → {input_copy_dir / src_input.name}", flush=True)
+
+    if rc != 0:
+        return rc
 
     # ── Copy to destination repository (optional) ─────────────────────────────
     if dest_dir and hdp_id:
@@ -503,8 +507,8 @@ Examples:
   python run_pipeline.py --input data_dict.csv --hdp-id HDP01258 \\
     --format formats/hbcd.yaml --name HBCD_datadictionary
 
-  # Non-interactive / scripted use
-  python run_pipeline.py --input data_dict.csv --hdp-id HDP01258 --no-confirm
+  # Non-interactive / scripted use (no study confirmation, no stop for description review)
+  python run_pipeline.py --input data_dict.csv --hdp-id HDP01258 --no-confirm --yes
 
   # Skip LLM (deterministic only)
   python run_pipeline.py --input data_dict.csv --hdp-id HDP01258 --skip-llm
@@ -573,6 +577,7 @@ Examples:
         no_detect=args.no_detect,
         output_dir=output_dir,
         no_confirm=args.no_confirm,
+        yes=args.yes,
         dest_dir=Path(args.dest_dir) if args.dest_dir else None,
         description_review_decisions=args.description_review_decisions,
         sheet=args.sheet,

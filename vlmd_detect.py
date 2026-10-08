@@ -404,7 +404,8 @@ def main():
         )
         print(f"\nDetection result → {args.output_json}", flush=True)
 
-    # Exit codes: 0=known format, 1=unknown (needs interview), 2=error
+    # Exit codes: 0=known format, 1=unknown (needs interview). Errors raise, which
+    # Python also reports as exit 1.
     if result["format_name"] is None:
         sys.exit(1)
     sys.exit(0)
