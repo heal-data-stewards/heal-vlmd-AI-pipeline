@@ -150,7 +150,7 @@ cp .env.template .env
 
 # Azure AI Foundry — primary LLM backend for HEAL
 AZURE_OPENAI_API_KEY=<your-key>
-AZURE_OPENAI_ENDPOINT=https://<your-resource>.cognitiveservices.azure.com/
+AZURE_OPENAI_ENDPOINT=<your-openai-endpoint>
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 
 # Anthropic — optional alternative
