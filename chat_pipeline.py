@@ -1,4 +1,4 @@
-"""Conversational VLMD conversion pipeline — prototype (issue #15).
+"""Conversational VLMD conversion pipeline — prototype.
 
 Unlike run_pipeline.py (which stays the non-interactive batch entry point),
 this is a Python generator that pauses at defined checkpoints and resumes via
@@ -252,14 +252,47 @@ def run_conversational(
         input_filename=Path(input_file).name,
     )
 
+    # merge()'s own validate=True already re-validates the final merged
+    # document and returns a pass/fail exit code — this used to be computed
+    # and then thrown away entirely here, so a user could see "Done!" below
+    # even when the final output fails schema validation. Re-validate the
+    # actual written file directly (the same healdata_utils call
+    # vlmd_merge.py's own validate_output() uses internally) so the real
+    # pass/fail AND error list can be reported honestly instead of trusting
+    # an unconditional success message.
+    from healdata_utils import validate_vlmd_json
+
+    final_json_path = vlmd_out / f"{file_stem}.vlmd.json"
+    final_valid = False
+    errors: list[str] = []
+    if final_json_path.exists():
+        final_doc = json.loads(final_json_path.read_text(encoding="utf-8"))
+        result = validate_vlmd_json(final_doc)
+        report = result.get("report", result)
+        final_valid = report.get("valid", False)
+        errors = report.get("errors", [])
+
+    field_count = len(json.loads(Path(converted_path).read_text()))
+    if final_valid:
+        message = (
+            f"Done! Converted {field_count} fields "
+            f"({len(lint_records)} were flagged and sent through LLM fixup). "
+            f"The final output is schema-valid. Output in {vlmd_out}"
+        )
+    else:
+        preview = "; ".join(errors[:3]) or "(no error detail available — output file may be missing)"
+        more = f" ...and {len(errors) - 3} more" if len(errors) > 3 else ""
+        message = (
+            f"Converted {field_count} fields, but the final merged output is NOT "
+            f"schema-valid ({len(errors)} error(s)): {preview}{more}. Files were "
+            f"still written to {vlmd_out} for inspection, but this needs fixing "
+            f"before it's ready to use."
+        )
+
     yield Prompt(
         kind="done",
-        message=(
-            f"Done! Converted {len(json.loads(Path(converted_path).read_text()))} fields "
-            f"({len(lint_records)} were flagged and sent through LLM fixup). "
-            "Output in " + str(vlmd_out)
-        ),
-        payload={"output_dir": str(vlmd_out)},
+        message=message,
+        payload={"output_dir": str(vlmd_out), "valid": final_valid, "error_count": len(errors)},
     )
 
 
@@ -281,7 +314,7 @@ def _terminal_demo(input_file: str, hdp_id: str, model: str, format_yaml: str | 
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Conversational VLMD pipeline prototype (issue #15)")
+    ap = argparse.ArgumentParser(description="Conversational VLMD pipeline prototype")
     ap.add_argument("--input", required=True)
     ap.add_argument("--hdp-id", default="")
     ap.add_argument("--model", default="azure-gpt-4.1-mini")
