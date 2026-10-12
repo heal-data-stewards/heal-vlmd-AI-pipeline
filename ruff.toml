@@ -1,6 +1,5 @@
 # Ruff config. The Ruff version is pinned in requirements-dev.txt because
-# Ruff's formatting and default rules change between releases; bump it
-# deliberately and re-run `ruff format .` in the same change.
+# Ruff's formatting changes between releases; see "Bump Ruff deliberately"
+# in CONTRIBUTING.md before changing it.
 target-version = "py311"
 line-length = 100
-extend-exclude = [".idea"]
