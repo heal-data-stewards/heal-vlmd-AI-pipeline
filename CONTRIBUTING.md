@@ -52,4 +52,4 @@ Python 3.11 or later is required. Conversion, detection and validation run witho
 - Write the title as a description of what the change does, e.g. "Detect REDCap exports with renamed columns", since titles become entries in the release notes.
 - Anything a future developer needs to know belongs in the repository (code comments, the README, `AGENTS.md`), not only in the pull request description. That includes approaches that were tried and didn't work, if someone is likely to try them again.
 - Every pull request needs a review from a person before it is merged.
-- A pull request that adds a SHA to `.git-blame-ignore-revs` must be merged with a merge commit, not squashed or rebased; otherwise the listed SHA won't exist on `main`.
+- Pull requests are merged with a merge commit; the repository's settings turn off squash and rebase merging. Keep it that way: a squash or rebase gives every commit a new SHA, so the commits listed in `.git-blame-ignore-revs` wouldn't exist on `main` and `git blame` would silently stop skipping them.
