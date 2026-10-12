@@ -640,6 +640,18 @@ python run_pipeline.py \
 
 ---
 
+## Development
+
+```bash
+pip install -r requirements-dev.txt   # requirements.txt + Ruff
+ruff format .                         # format Python code before committing
+git config blame.ignoreRevsFile .git-blame-ignore-revs   # once: skip bulk reformat commits in git blame
+```
+
+Ruff is pinned to one version in `requirements-dev.txt`, because its formatting changes between releases.
+
+---
+
 ## Bot / API integration
 
 The pipeline is designed from the start to be driven by a conversational interface. All interaction points produce structured JSON, and all state lives in files — making it straightforward to wrap in an MCP server, Streamlit app, or REST API.
@@ -774,8 +786,11 @@ heal-vlmd-AI-pipeline/
 ├── AGENTS.md                    Orientation for AI coding agents: commands and architecture
 ├── NDAR_CONVERSION_NOTES.md     Design notes for a future NDAR converter (nothing implemented yet)
 ├── requirements.txt             Python dependencies
+├── requirements-dev.txt         requirements.txt + pinned Ruff
+├── ruff.toml                    Ruff config
 ├── .env.template                Copy to .env and fill in API keys
 ├── .gitignore
+├── .git-blame-ignore-revs       Bulk reformat commits for git blame to skip
 │
 ├── run_pipeline.py              One-command orchestrator (pure Python)
 ├── chat_pipeline.py             Conversational prototype: same stages as a resumable generator
