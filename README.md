@@ -643,17 +643,7 @@ python run_pipeline.py \
 
 ## Development
 
-```bash
-pip install -r requirements-dev.txt   # requirements.txt + pytest + Ruff
-pytest                                # offline tests, no credentials needed
-ruff check .                          # lint
-ruff format .                         # format
-git config blame.ignoreRevsFile .git-blame-ignore-revs   # once: skip bulk reformat commits in git blame
-```
-
-GitHub Actions (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check` and `pytest` on every pull request. Ruff is pinned to one version in `requirements-dev.txt` and in the workflow, because its formatting and default rules change between releases.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for what a pull request needs before review.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setting up a development environment, running the tests, linting and formatting with Ruff, and what a pull request needs before review. GitHub Actions (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check` and `pytest` on every pull request.
 
 ---
 

@@ -15,8 +15,8 @@ cp .env.template .env                    # only needed for LLM steps
 
 # Tests, lint and formatting: what CI runs. All offline, no credentials.
 pytest
-ruff check .
-ruff format .                            # CI runs `ruff format --check .`
+python -m ruff check .
+python -m ruff format .                  # CI runs `ruff format --check .`
 
 # The example conversions with human-readable output. Exit 0 = all three examples convert and pass schema validation.
 python examples/run_examples.py
@@ -37,7 +37,7 @@ python chat_pipeline.py --input demo/demo_dd.csv --hdp-id DEMO001
 python probe_azure.py
 ```
 
-`.github/workflows/ci.yml` runs Ruff (`ruff check`, `ruff format --check`) and `pytest` on Python 3.11 on every PR and push to `main`. Ruff is configured in `ruff.toml` and pinned in `requirements-dev.txt` and the workflow, because its formatting and default rules change between releases: bump both together, and re-run `ruff format .` in the same change. A deliberate `except Exception` at a stage boundary (LLM call, validator, PDF read) carries `# noqa: BLE001` with a reason, because narrowing it would turn an exit code into a traceback. `.git-blame-ignore-revs` lists bulk reformat commits so `git blame` skips them. A PR that adds a SHA to it must be merged with a merge commit, not a squash or rebase, or the SHA won't exist on `main`.
+`.github/workflows/ci.yml` runs Ruff (`ruff check`, `ruff format --check`) and `pytest` on Python 3.11 on every PR and push to `main`. Ruff formats Python code, including Python blocks in Markdown files, and is configured in `ruff.toml` and pinned in `requirements-dev.txt` and the workflow; run it as `python -m ruff` so the pinned version runs. Before bumping that pin or touching `.git-blame-ignore-revs`, read "Bump Ruff deliberately" and the pull request rules in `CONTRIBUTING.md`. A deliberate `except Exception` at a stage boundary (LLM call, validator, PDF read) carries `# noqa: BLE001` with a reason, because narrowing it would turn an exit code into a traceback.
 
 Tests live in `tests/`, and `pytest.ini` puts the repo root and `examples/` on `sys.path`. `tests/conftest.py` monkeypatches `run_pipeline.WORK_DIR` to a temp dir; any new test calling `run()` must also pass `output_dir=tmp_path/...` so nothing is written to the repo. `tests/test_examples.py` runs the same `--skip-llm --no-detect` conversions as `examples/run_examples.py` (reusing its `EXAMPLES` list) and spot-checks one categorical field per example, because a broken levels parser still produces schema-valid output. Regression fixtures from real conversions (#13) belong in `tests/` too, so CI runs them. If `healdata_utils` can't be imported, validation fails rather than being skipped, so a broken environment shows up as FAIL (exit 2), not a false PASS. `work/`, `output/` and `examples/output/` are gitignored scratch.
 
