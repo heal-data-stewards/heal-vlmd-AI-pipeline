@@ -653,6 +653,8 @@ git config blame.ignoreRevsFile .git-blame-ignore-revs   # once: skip bulk refor
 
 GitHub Actions (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check` and `pytest` on every pull request. Ruff is pinned to one version in `requirements-dev.txt` and in the workflow, because its formatting and default rules change between releases.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for what a pull request needs before review.
+
 ---
 
 ## Bot / API integration
@@ -787,6 +789,7 @@ heal-vlmd-AI-pipeline/
 │
 ├── README.md                    This file
 ├── AGENTS.md                    Orientation for AI coding agents: commands and architecture
+├── CONTRIBUTING.md              Development setup and what a pull request needs before review
 ├── NDAR_CONVERSION_NOTES.md     Design notes for a future NDAR converter (nothing implemented yet)
 ├── requirements.txt             Python dependencies
 ├── requirements-dev.txt         requirements.txt + pytest + pinned Ruff
