@@ -1,3 +1,10 @@
+"""Unit tests for llm_client's offline helpers.
+
+Put tests here for code in llm_client.py that runs without a network call or
+credentials, such as parsing a model's reply. Nothing here may call
+call_llm() or construct a client: CI has no LLM credentials.
+"""
+
 import json
 
 import pytest

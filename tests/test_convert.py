@@ -1,9 +1,22 @@
+"""Unit tests for vlmd_convert: turning input rows into VLMD fields.
+
+Put tests here for the converter's functions called directly with small
+inline inputs: parse_levels(), column resolution (resolve_column_spec,
+resolve_all_columns), row_to_vlmd_field(), encoding cleanup
+(clean_field_encoding) and the lint flags (flag_field). A test that needs a
+whole input file and runs the pipeline belongs in test_examples.py.
+"""
+
 import pytest
 
 from vlmd_convert import parse_levels
 
 JSON_ARRAY = {"format": "json_array", "value_key": "value", "label_key": "label"}
 PIPE = {"format": "pipe_separated", "pair_separator": ",", "choice_separator": "|"}
+
+# --- Parsing each levels.format ---
+# parse_levels() with each `levels.format` value a format YAML can name. A new
+# value in vlmd_convert needs a test here.
 
 
 def test_json_array():
@@ -31,6 +44,11 @@ def test_comma_separated():
 )
 def test_auto_detect(raw, expected):
     assert parse_levels(raw, {"format": "auto_detect"}) == expected
+
+
+# --- Input with no levels ---
+# Blank cells, pandas' "nan", and a missing or unknown levels spec all give no
+# levels rather than an error.
 
 
 @pytest.mark.parametrize("raw", ["", "nan", "NaN", "  "])

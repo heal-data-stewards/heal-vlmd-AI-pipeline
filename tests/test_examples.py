@@ -3,6 +3,11 @@
 The same runs as examples/run_examples.py: --skip-llm --no-detect with the
 format given explicitly. run() validates the merged output against the VLMD
 schema and returns 2 if it fails, so rc == 0 means schema-valid output.
+
+Put tests here that run the whole pipeline through run_pipeline.run() on an
+input file. A new example belongs in run_examples.EXAMPLES, with its expected
+levels in EXPECTED_LEVELS below, rather than in a new test. Every call to
+run() must pass output_dir under tmp_path.
 """
 
 import csv

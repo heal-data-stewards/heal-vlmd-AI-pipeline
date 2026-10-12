@@ -1,3 +1,11 @@
+"""Unit tests for vlmd_merge: applying LLM fixes to the converted fields.
+
+Put tests here for merge_fixes() and the steps that shape the final output
+(normalize_fields, fields_to_csv_rows), called directly on small inline field
+lists. A test that
+needs the output files written to disk belongs in test_examples.py.
+"""
+
 from vlmd_merge import merge_fixes
 
 
