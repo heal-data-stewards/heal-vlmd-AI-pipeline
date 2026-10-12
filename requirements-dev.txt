@@ -1,4 +1,5 @@
 -r requirements.txt
 pytest>=8
-# Pinned: Ruff's formatting and default rules change between releases.
+# Pinned: Ruff's formatting and default rules change between releases. Keep
+# in step with .github/workflows/ci.yml.
 ruff==0.17.0

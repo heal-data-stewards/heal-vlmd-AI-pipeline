@@ -1,6 +1,7 @@
-# Ruff config. The Ruff version is pinned in requirements-dev.txt because
-# Ruff's formatting and default rules change between releases; bump it
-# deliberately and re-run `ruff format .` in the same change.
+# Ruff config. The Ruff version is pinned in requirements-dev.txt and
+# .github/workflows/ci.yml because Ruff's formatting and default rules change
+# between releases; bump both together and re-run `ruff format .` in the same
+# change.
 target-version = "py311"
 line-length = 100
 extend-exclude = [".idea"]
