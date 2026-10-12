@@ -55,6 +55,17 @@ def test_every_format_yaml_loads():
         assert "signature_columns" in spec.get("detection", {}), name
 
 
+@pytest.mark.parametrize(
+    "text",
+    ["format_name: [", "- a list, not a mapping", "format_name: []"],
+    ids=["bad syntax", "not a mapping", "unhashable format_name"],
+)
+def test_malformed_yaml_is_skipped(tmp_path, text):
+    (tmp_path / "bad.yaml").write_text(text, encoding="utf-8")
+    (tmp_path / "good.yaml").write_text("format_name: good", encoding="utf-8")
+    assert list(vlmd_detect.load_all_formats(tmp_path)) == ["good"]
+
+
 # --- Scoring a header against a format ---
 # score_format() on a hand-made spec, so the weighting is tested independently
 # of the real YAMLs.

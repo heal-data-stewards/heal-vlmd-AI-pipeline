@@ -46,7 +46,7 @@ def load_all_formats(formats_dir: Path = FORMATS_DIR) -> dict[str, dict]:
             key = spec.get("format_name", f.stem)
             spec["_yaml_path"] = str(f)
             specs[key] = spec
-        except (OSError, ValueError, yaml.YAMLError, AttributeError) as e:
+        except (OSError, ValueError, TypeError, yaml.YAMLError, AttributeError) as e:
             print(f"  WARNING: could not load {f.name}: {e}", file=sys.stderr)
     return specs
 
