@@ -8,7 +8,7 @@ Thanks for helping improve the VLMD conversion pipeline. This file covers how to
 git clone https://github.com/heal-data-stewards/heal-vlmd-AI-pipeline
 cd heal-vlmd-AI-pipeline
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt     # requirements.txt + the pinned Ruff version
+pip install -r requirements-dev.txt     # requirements.txt + pytest + the pinned Ruff version
 pip install pyreadstat                  # only if you work on Stata (.dta) input
 cp .env.template .env                   # only if you work on the LLM steps
 git config blame.ignoreRevsFile .git-blame-ignore-revs   # once: skip bulk reformat commits in git blame
@@ -18,23 +18,26 @@ Python 3.11 or later is required. Conversion, detection and validation run witho
 
 ## Before opening a pull request
 
-1. **Format the Python code with Ruff.**
+GitHub Actions (`.github/workflows/ci.yml`) runs the first two steps on every pull request, and a pull request isn't ready for review until they pass. Running them locally first is faster than waiting for CI.
+
+1. **Format and lint the Python code with Ruff.**
 
    ```bash
    python -m ruff format .
+   python -m ruff check .
    ```
 
-   Run this before you open the pull request, and again before you ask for another round of review. `python -m ruff format --check .` reports files that need formatting without changing them. Besides `.py` files, Ruff also formats the Python code blocks in Markdown files such as this one and the README.
+   Run these before you open the pull request, and again before you ask for another round of review. CI runs `ruff format --check .`, which fails on any file that needs formatting. Besides `.py` files, Ruff also formats the Python code blocks in Markdown files such as this one and the README. `python -m ruff check --fix .` applies the fixes Ruff is sure of; read them before committing. A deliberate `except Exception` at a stage boundary (an LLM call, the validator, a PDF read) is marked `# noqa: BLE001` with a reason rather than narrowed, because narrowing it would turn an exit code into a traceback.
 
-   Run Ruff as `python -m ruff` from the virtual environment, so you get the version pinned in `requirements-dev.txt`. A bare `ruff` may be a different version installed elsewhere (Homebrew, pipx), and other versions format some code differently and will produce unrelated changes. Without the virtual environment, `uvx ruff@0.17.0 format .` runs the pinned version.
+   Run Ruff as `python -m ruff` from the virtual environment, so you get the version pinned in `requirements-dev.txt`. A bare `ruff` may be a different version installed elsewhere (Homebrew, pipx), and other versions format some code differently and will produce unrelated changes. Without the virtual environment, `uvx ruff@0.17.0` runs the pinned version.
 
-2. **Run the examples.**
+2. **Run the tests.**
 
    ```bash
-   python examples/run_examples.py
+   pytest
    ```
 
-   This converts the three synthetic dictionaries in `examples/` with no LLM calls and validates the output against the VLMD schema. It is the only automated check in the repository, so run it after changing any pipeline stage. Exit 0 means all three passed. If you changed an LLM step, also run the pipeline on a file that exercises that step, and say in the pull request what you ran.
+   The tests run offline and need no credentials. They include the example conversions in `examples/`, which convert three synthetic dictionaries and validate the output against the VLMD schema. `python examples/run_examples.py` runs the same conversions with readable output. Add tests for what you change; a test that calls `run_pipeline.run()` must pass `output_dir=tmp_path / ...` so nothing is written into the repository. If you changed an LLM step, which the tests don't call, also run the pipeline on a file that exercises that step, and say in the pull request what you ran.
 
 3. **Update the README** if you changed a command-line flag, the format YAML anatomy, the `levels.format` values, the LLM models table or the exit codes. The README is the user manual and has to stay in sync with the code.
 
@@ -44,7 +47,7 @@ Python 3.11 or later is required. Conversion, detection and validation run witho
 - **Keep pipeline logic in the stage modules** (`vlmd_*.py`), not in `run_pipeline.py` or `chat_pipeline.py`, which both drive the same stages.
 - **Treat exit codes and the JSON files in `work/` as a public interface.** Bots drive the pipeline through them, so changing what a code means or how a file is laid out is a breaking change. Call it out in the pull request.
 - **Never commit participant data or credentials.** `.env`, `work/` and `output/` are gitignored; check `git status` before committing anything from them. Use synthetic data dictionaries for examples, and before committing a real one (as a test fixture, say), confirm that the study's data dictionary is cleared for sharing. The study-specific mappings in `formats/` (`{applid}.yaml`, `HDP*.yaml`) are committed on purpose: they record a column mapping a person confirmed and contain no data values.
-- **Bump Ruff deliberately.** Move to a new Ruff version in one pull request with three commits: first change the pin in `requirements-dev.txt`; then run `python -m ruff format .` and commit the result as its own commit containing nothing else; then add that commit's full SHA to `.git-blame-ignore-revs` so `git blame` skips it. Keeping the pin change out of the reformat commit means `git blame` still shows who changed the pin.
+- **Bump Ruff deliberately.** Move to a new Ruff version in one pull request with three commits: first change the pin in both `requirements-dev.txt` and `.github/workflows/ci.yml`, with fixes for anything new that `ruff check` reports; then run `python -m ruff format .` and commit the result as its own commit containing nothing else; then add that commit's full SHA to `.git-blame-ignore-revs` so `git blame` skips it. Keeping the pin change out of the reformat commit means `git blame` still shows who changed the pin.
 
 ## Pull requests
 

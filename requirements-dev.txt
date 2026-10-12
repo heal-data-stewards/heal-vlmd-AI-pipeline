@@ -1,3 +1,5 @@
 -r requirements.txt
-# Pinned: Ruff's formatting changes between releases. See CONTRIBUTING.md before bumping.
+pytest>=8
+# Pinned, here and in .github/workflows/ci.yml: Ruff's formatting and lint
+# rules change between releases. See CONTRIBUTING.md before bumping.
 ruff==0.17.0
