@@ -1,0 +1,6 @@
+# Commits that git blame should skip: purely mechanical reformatting.
+# GitHub's blame view reads this file automatically. For local blame, run once:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Reformat with ruff format
+b55009faaac568ec093fa3859f2141d343bc0929
