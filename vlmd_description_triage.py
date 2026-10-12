@@ -95,20 +95,43 @@ def triage(
             print(flush=True)
             raise RuntimeError(f"Triage LLM call failed: {err}")
 
-        parsed = parse_json_response(raw)
-        if not isinstance(parsed, list):
-            print(flush=True)
-            # Malformed LLM output is a bad value, not a caller passing the wrong type.
-            raise ValueError(f"Expected JSON array from triage, got {type(parsed).__name__}")  # noqa: TRY004
+        try:
+            parsed = parse_json_response(raw)
+        except ValueError:  # json.JSONDecodeError
+            parsed = None
+        entries = (
+            [e for e in parsed if isinstance(e, dict) and e.get("name")]
+            if isinstance(parsed, list)
+            else []
+        )
+        if not entries:
+            # Malformed output: flag the chunk for a human rather than abort the run,
+            # since a human reviews every suggestion anyway. Not checkpointed, so a
+            # re-run asks the LLM again.
+            print(
+                f"\n  WARNING: triage returned malformed output for chunk {i + 1}; "
+                f"flagging its {len(chunk)} field(s) for human review.",
+                flush=True,
+            )
+            for item in chunk:
+                results[item["name"]] = {
+                    "name": item["name"],
+                    "decision": "flag_for_human",
+                    "justification": "LLM triage returned malformed output; review by hand.",
+                }
+            print_progress(i + 1, len(chunks), time.time() - t_start, label="Triage")
+            continue
 
-        for entry in parsed:
+        # Entries that aren't named objects are dropped; run_pipeline treats a field
+        # with no suggestion as flag_for_human.
+        for entry in entries:
             if entry.get("decision") not in ("send_to_llm", "leave_as_is", "flag_for_human"):
                 entry["decision"] = (
                     "flag_for_human"  # safe fallback: don't guess, don't auto-approve
                 )
             results[entry["name"]] = entry
 
-        checkpoint[chunk_key] = parsed
+        checkpoint[chunk_key] = entries
         if checkpoint_path:
             Path(checkpoint_path).write_text(
                 json.dumps(
