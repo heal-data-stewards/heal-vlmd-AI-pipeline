@@ -316,6 +316,9 @@ buckets using its source-row context:
 - `leave_as_is` — short but already meaningful given context
 - `flag_for_human` — real source content that's just terse/technical jargon (e.g. `"relResdiff1"`); the model won't guess at what it means, a human decides
 
+If the LLM's reply for a batch of fields can't be used (not a JSON array of named entries), triage prints a warning and 
+flags that batch's fields `flag_for_human` instead of stopping the pipeline; a re-run asks the LLM about them again.
+
 
 When it's done:
 
