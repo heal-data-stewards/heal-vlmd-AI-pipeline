@@ -1,4 +1,5 @@
 """Quick probe to find working Azure endpoint config and deployment names."""
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -6,7 +7,7 @@ from openai import AzureOpenAI, OpenAI
 
 load_dotenv(Path(__file__).parent / ".env")
 
-KEY      = os.getenv("AZURE_OPENAI_API_KEY", "")
+KEY = os.getenv("AZURE_OPENAI_API_KEY", "")
 ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
 
 DEPLOYMENTS = [
@@ -56,14 +57,15 @@ else:
     ]
     base = ENDPOINT
     if base.endswith("/openai"):
-        base = base[:-len("/openai")]
+        base = base[: -len("/openai")]
     print(f"Detected classic Azure endpoint — base: {base}\n")
 
     found_version = None
     for version in VERSIONS:
         try:
-            c = AzureOpenAI(api_key=KEY, azure_endpoint=base,
-                            api_version=version, timeout=10.0, max_retries=0)
+            c = AzureOpenAI(
+                api_key=KEY, azure_endpoint=base, api_version=version, timeout=10.0, max_retries=0
+            )
             c.chat.completions.create(
                 model=DEPLOYMENTS[0],
                 messages=[{"role": "user", "content": "Hi"}],
@@ -85,8 +87,9 @@ else:
                 print(f"  {version} — {msg[:80]}")
 
     if found_version:
-        client = AzureOpenAI(api_key=KEY, azure_endpoint=base,
-                             api_version=found_version, timeout=10.0, max_retries=0)
+        client = AzureOpenAI(
+            api_key=KEY, azure_endpoint=base, api_version=found_version, timeout=10.0, max_retries=0
+        )
         print(f"\nTesting deployments with version {found_version}:\n")
         for dep in DEPLOYMENTS:
             try:

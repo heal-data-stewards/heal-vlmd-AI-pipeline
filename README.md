@@ -698,24 +698,29 @@ An MCP server could expose these tools, letting any MCP-compatible client (Claud
 ```python
 # mcp_server.py (stub — not yet implemented)
 
+
 @mcp.tool()
 def lookup_study(hdp_id: str) -> dict:
     """Fetch study info from the HEAL platform. Returns appl_id, study_name, investigators."""
     ...
+
 
 @mcp.tool()
 def detect_format(file_path: str, model: str = "azure-gpt-4.1-mini") -> dict:
     """Detect the format of a data dictionary file."""
     ...
 
+
 @mcp.tool()
 def save_format_mapping(applid: str, mapping: dict, hdp_id: str = "") -> dict:
     """Save a confirmed column mapping as formats/{applid}.yaml for future reuse."""
     ...
 
+
 @mcp.tool()
-def run_conversion(file_path: str, format_yaml: str, appl_id: str,
-                   hdp_id: str = "", dest_dir: str = "") -> dict:
+def run_conversion(
+    file_path: str, format_yaml: str, appl_id: str, hdp_id: str = "", dest_dir: str = ""
+) -> dict:
     """Run the full conversion pipeline. Returns output file paths and validation status."""
     ...
 ```
@@ -726,6 +731,7 @@ Because the pipeline is pure Python, the cleanest integration is a direct import
 
 ```python
 import sys
+
 sys.path.insert(0, "/path/to/heal-vlmd-AI-pipeline")
 
 from vlmd_lookup import lookup, confirm_study
@@ -750,8 +756,8 @@ exit_code = run(
     model="azure-gpt-4.1-mini",
     skip_llm=False,
     no_detect=True,
-    no_confirm=True,                   # skip the study confirmation prompt
-    yes=True,                          # never stop for description review
+    no_confirm=True,  # skip the study confirmation prompt
+    yes=True,  # never stop for description review
     output_dir=Path("output"),
     dest_dir=Path("/path/to/CleanedDataDictionaries"),
 )

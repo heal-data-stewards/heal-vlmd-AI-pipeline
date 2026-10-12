@@ -13,6 +13,7 @@ Usage (standalone):
 
 Called automatically by run_pipeline.py when --input ends in .pdf.
 """
+
 import argparse
 import csv
 import json
@@ -36,6 +37,7 @@ _MAX_NAME_LEN = 15
 # ---------------------------------------------------------------------------
 # PDF content extraction
 # ---------------------------------------------------------------------------
+
 
 def _extract_page_rows(page) -> list[list]:
     """Return a flat list of table rows from a pdfplumber page object."""
@@ -62,8 +64,7 @@ def extract_all_pages(pdf_path: str) -> list[list[list]]:
         import pdfplumber
     except ImportError:
         raise ImportError(
-            "pdfplumber is required for PDF extraction.\n"
-            "Install it with:  pip install pdfplumber"
+            "pdfplumber is required for PDF extraction.\nInstall it with:  pip install pdfplumber"
         )
 
     pages = []
@@ -86,6 +87,7 @@ def _has_variable_candidate(rows: list[list]) -> bool:
 # ---------------------------------------------------------------------------
 # LLM parsing
 # ---------------------------------------------------------------------------
+
 
 def _parse_batch(batch_rows: list[list[list]], model_key: str) -> list[dict]:
     """
@@ -138,6 +140,7 @@ def _parse_batch(batch_rows: list[list[list]], model_key: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Deduplication and merge
 # ---------------------------------------------------------------------------
+
 
 def _merge_records(records: list[dict]) -> list[dict]:
     """
@@ -195,6 +198,7 @@ def _forward_fill_sections(records: list[dict]) -> None:
 # Main entry point
 # ---------------------------------------------------------------------------
 
+
 def extract(pdf_path: str, output_csv: str, model_key: str = DEFAULT_MODEL) -> int:
     """
     Extract variables from a PDF codebook and write a CSV suitable for the VLMD pipeline.
@@ -231,7 +235,10 @@ def extract(pdf_path: str, output_csv: str, model_key: str = DEFAULT_MODEL) -> i
     print(f"\n  Total unique variables extracted: {len(merged)}", flush=True)
 
     if not merged:
-        print("ERROR: No variables extracted from PDF — check the file and model output.", file=sys.stderr)
+        print(
+            "ERROR: No variables extracted from PDF — check the file and model output.",
+            file=sys.stderr,
+        )
         return 1
 
     out_path = Path(output_csv)
@@ -250,6 +257,7 @@ def extract(pdf_path: str, output_csv: str, model_key: str = DEFAULT_MODEL) -> i
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     ap = argparse.ArgumentParser(
         description="Extract a data dictionary from a PDF codebook to CSV."
@@ -257,8 +265,7 @@ def main():
     ap.add_argument("--input", required=True, help="Path to input PDF file")
     ap.add_argument("--output", required=True, help="Path for the output CSV file")
     ap.add_argument(
-        "--model", default=DEFAULT_MODEL,
-        help=f"LLM model key (default: {DEFAULT_MODEL})"
+        "--model", default=DEFAULT_MODEL, help=f"LLM model key (default: {DEFAULT_MODEL})"
     )
     args = ap.parse_args()
 
