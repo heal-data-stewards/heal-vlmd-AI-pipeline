@@ -1,0 +1,3 @@
+-r requirements.txt
+# Pinned: Ruff's formatting and default rules change between releases.
+ruff==0.17.0
