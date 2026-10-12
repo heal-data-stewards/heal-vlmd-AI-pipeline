@@ -57,4 +57,4 @@ There is no test suite. `examples/run_examples.py` runs `--skip-llm --no-detect`
 
 ## Documentation
 
-`README.md` is the user manual and should stay in sync with CLI flags, format YAML anatomy, `levels.format` values, the models table, and exit codes. When changing any of those, update the README in the same change.
+`CONTRIBUTING.md` lists what a pull request needs before review (Ruff, the examples, README updates); keep it in sync with the commands above. `README.md` is the user manual and should stay in sync with CLI flags, format YAML anatomy, `levels.format` values, the models table, and exit codes. When changing any of those, update the README in the same change.
