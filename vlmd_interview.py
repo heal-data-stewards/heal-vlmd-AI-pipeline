@@ -17,6 +17,7 @@ Usage:
     python vlmd_interview.py show \
         --detection-json work/vlmd_detection.json
 """
+
 import argparse
 import json
 import sys
@@ -40,14 +41,16 @@ def build_format_yaml(
 
     # Derive signature columns for future detection from the mapped columns
     strong_cols = [
-        v for k, v in {
+        v
+        for k, v in {
             "name_column": mapping.get("name_column"),
             "description_column": mapping.get("description_column"),
         }.items()
         if v
     ]
     supporting_cols = [
-        v for v in [
+        v
+        for v in [
             (mapping.get("type_mapping") or {}).get("source_column"),
             (mapping.get("levels") or {}).get("source_column"),
             (mapping.get("section") or {}).get("primary_column"),
@@ -133,9 +136,14 @@ def build_format_yaml(
     return doc
 
 
-def save_format(applid: str, mapping: dict, hdp_id: str = "",
-                source_file: str = "", columns: list[str] | None = None,
-                formats_dir: Path = FORMATS_DIR) -> str:
+def save_format(
+    applid: str,
+    mapping: dict,
+    hdp_id: str = "",
+    source_file: str = "",
+    columns: list[str] | None = None,
+    formats_dir: Path = FORMATS_DIR,
+) -> str:
     doc = build_format_yaml(applid, mapping, hdp_id, source_file, columns)
     out_path = formats_dir / f"{applid}.yaml"
 
@@ -145,8 +153,7 @@ def save_format(applid: str, mapping: dict, hdp_id: str = "",
         print(f"  Existing format backed up to {backup.name}", flush=True)
 
     with open(out_path, "w", encoding="utf-8") as fh:
-        yaml.dump(doc, fh, default_flow_style=False, allow_unicode=True,
-                  sort_keys=False, indent=2)
+        yaml.dump(doc, fh, default_flow_style=False, allow_unicode=True, sort_keys=False, indent=2)
 
     print(f"  Saved format YAML → {out_path}", flush=True)
     return str(out_path)
@@ -155,6 +162,7 @@ def save_format(applid: str, mapping: dict, hdp_id: str = "",
 def show_detection(detection_path: str):
     """Pretty-print detection result for the user (called by skill)."""
     from vlmd_detect import format_detection_message
+
     result = json.loads(Path(detection_path).read_text(encoding="utf-8"))
     print(format_detection_message(result))
 
@@ -165,12 +173,14 @@ def main():
 
     save_p = sub.add_parser("save", help="Save a confirmed mapping as {applid}.yaml")
     save_p.add_argument("--applid", required=True)
-    save_p.add_argument("--mapping-json", required=True,
-                        help="JSON string of the confirmed proposed_mapping dict")
+    save_p.add_argument(
+        "--mapping-json", required=True, help="JSON string of the confirmed proposed_mapping dict"
+    )
     save_p.add_argument("--hdp-id", default="")
     save_p.add_argument("--source-file", default="")
-    save_p.add_argument("--columns", default="",
-                        help="Comma-separated list of original file columns")
+    save_p.add_argument(
+        "--columns", default="", help="Comma-separated list of original file columns"
+    )
     save_p.add_argument("--formats-dir", default=str(FORMATS_DIR))
 
     show_p = sub.add_parser("show", help="Display detection result")

@@ -7,6 +7,7 @@ Usage:
     cd heal-vlmd-pipeline
     python examples/run_examples.py
 """
+
 import sys
 from pathlib import Path
 
@@ -66,12 +67,12 @@ def main():
             input_file=ex["input"],
             format_yaml=ex["format"],
             appl_id=ex["appl_id"],
-            hdp_id="",                 # empty → no copy to CleanedDataDictionaries
+            hdp_id="",  # empty → no copy to CleanedDataDictionaries
             title=ex["title"],
             study_label=ex["study_label"],
             model="azure-gpt-4.1-mini",
-            skip_llm=True,            # no credentials needed for examples
-            no_detect=True,           # format explicitly specified
+            skip_llm=True,  # no credentials needed for examples
+            no_detect=True,  # format explicitly specified
             output_dir=OUTPUT_DIR / ex["appl_id"],
         )
         results.append((ex["name"], rc))

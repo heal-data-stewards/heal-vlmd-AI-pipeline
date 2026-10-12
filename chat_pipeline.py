@@ -16,6 +16,7 @@ isn't wired up yet.)
 Usage (standalone terminal demo):
     python chat_pipeline.py --input demo/demo_dd.csv --hdp-id DEMO001
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,7 +32,7 @@ OUTPUT_DIR = PIPELINE_DIR / "output"
 
 @dataclass
 class Prompt:
-    kind: str                    # "confirm_mapping" | "cancelled" | "done" | "error"
+    kind: str  # "confirm_mapping" | "cancelled" | "done" | "error"
     message: str
     payload: dict[str, Any] = field(default_factory=dict)
 
@@ -57,11 +58,13 @@ def run_conversational(
     suffix = Path(input_file).suffix.lower()
     if suffix == ".pdf":
         from vlmd_pdf import extract as pdf_extract
+
         extracted = str(work_subdir / f"{file_stem}_extracted.csv")
         pdf_extract(input_file, extracted, model_key=model)
         input_file = extracted
     elif suffix in (".xlsx", ".xls"):
         from vlmd_excel import extract as excel_extract
+
         extracted = str(work_subdir / f"{file_stem}_extracted.csv")
         excel_extract(input_file, extracted)
         input_file = extracted
@@ -80,8 +83,16 @@ def run_conversational(
         # proposed mapping against.
         detection_summary = {
             k: detection.get(k)
-            for k in ("format_name", "confidence", "method", "reasoning",
-                      "row_count", "column_count", "ambiguous", "column_explanations")
+            for k in (
+                "format_name",
+                "confidence",
+                "method",
+                "reasoning",
+                "row_count",
+                "column_count",
+                "ambiguous",
+                "column_explanations",
+            )
         }
         # Same bloat as custom_columns below — one entry per column, so a
         # wide file with many blank columns produces one boilerplate
@@ -104,7 +115,9 @@ def run_conversational(
             custom_cols = mapping_for_display.get("custom_columns") or []
             if len(custom_cols) > 10:
                 shown = custom_cols[:10]
-                mapping_for_display["custom_columns"] = shown + [f"... and {len(custom_cols) - 10} more"]
+                mapping_for_display["custom_columns"] = shown + [
+                    f"... and {len(custom_cols) - 10} more"
+                ]
 
             answer = yield Prompt(
                 kind="confirm_mapping",
@@ -137,7 +150,7 @@ def run_conversational(
                 yield Prompt(
                     kind="error",
                     message="The AI couldn't propose a usable mapping for this file's columns, "
-                            "so I can't convert it yet.",
+                    "so I can't convert it yet.",
                 )
                 return
             from vlmd_interview import save_format
@@ -169,6 +182,7 @@ def run_conversational(
             return
 
     import yaml
+
     format_name = yaml.safe_load(Path(format_yaml).read_text()).get("format_name", "unknown")
 
     # ── convert ─────────────────────────────────────────────────────────────
@@ -204,7 +218,9 @@ def run_conversational(
         cols_seen: set[str] = set()
         for rec in lint_records:
             cols_seen.update((rec.get("source_row") or {}).keys())
-        cols_to_send = sorted(cols_seen & allowed_cols) if allowed_cols is not None else sorted(cols_seen)
+        cols_to_send = (
+            sorted(cols_seen & allowed_cols) if allowed_cols is not None else sorted(cols_seen)
+        )
 
         answer = yield Prompt(
             kind="confirm_llm_columns",
@@ -227,7 +243,9 @@ def run_conversational(
             for rec in lint_records:
                 sr = rec.get("source_row") or {}
                 rec["source_row"] = {k: v for k, v in sr.items() if k not in excluded}
-            Path(lint_path).write_text(json.dumps(lint_records, indent=2, ensure_ascii=False), encoding="utf-8")
+            Path(lint_path).write_text(
+                json.dumps(lint_records, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
             yield Prompt(
                 kind="info",
                 message=f"Excluding {sorted(excluded)} from LLM context. Continuing ...",
@@ -247,8 +265,16 @@ def run_conversational(
     from vlmd_merge import merge
 
     merge(
-        converted_path, fixes_path, str(vlmd_out), hdp_id, appl_id, title,
-        "DataDictionary", format_name, validate=True, file_stem=file_stem,
+        converted_path,
+        fixes_path,
+        str(vlmd_out),
+        hdp_id,
+        appl_id,
+        title,
+        "DataDictionary",
+        format_name,
+        validate=True,
+        file_stem=file_stem,
         input_filename=Path(input_file).name,
     )
 

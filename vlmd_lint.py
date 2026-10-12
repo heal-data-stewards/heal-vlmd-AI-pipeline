@@ -3,14 +3,14 @@
 Generic — format-agnostic. Identical logic to hbcd_lint.py, now with
 a configurable title argument so it works for any study.
 """
+
 import argparse
 import json
 import sys
 from pathlib import Path
 
 
-def lint(fields_path: str, report_path: str,
-         title: str = "HEAL Study Data Dictionary") -> int:
+def lint(fields_path: str, report_path: str, title: str = "HEAL Study Data Dictionary") -> int:
     fields = json.loads(Path(fields_path).read_text(encoding="utf-8"))
     print(f"Validating {len(fields):,} fields ...", flush=True)
 
@@ -22,6 +22,7 @@ def lint(fields_path: str, report_path: str,
 
     try:
         from healdata_utils import validate_vlmd_json
+
         result = validate_vlmd_json(vlmd_doc)
     except Exception as e:
         print(f"ERROR: validate_vlmd_json() failed: {e}", file=sys.stderr)
@@ -31,9 +32,7 @@ def lint(fields_path: str, report_path: str,
     is_valid = report.get("valid", False)
     errors = report.get("errors", [])
 
-    Path(report_path).write_text(
-        json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    Path(report_path).write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"  Valid: {is_valid}", flush=True)
     print(f"  Errors: {len(errors)}", flush=True)
