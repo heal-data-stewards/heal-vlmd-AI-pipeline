@@ -21,10 +21,12 @@ Python 3.11 or later is required. Conversion, detection and validation run witho
 1. **Format the Python code with Ruff.**
 
    ```bash
-   ruff format .
+   python -m ruff format .
    ```
 
-   Run this before you open the pull request, and again before you ask for another round of review. `ruff format --check .` reports files that need formatting without changing them. Use the Ruff version pinned in `requirements-dev.txt`: other versions format some code differently and will produce unrelated changes.
+   Run this before you open the pull request, and again before you ask for another round of review. `python -m ruff format --check .` reports files that need formatting without changing them. Besides `.py` files, Ruff also formats the Python code blocks in Markdown files such as this one and the README.
+
+   Run Ruff as `python -m ruff` from the virtual environment, so you get the version pinned in `requirements-dev.txt`. A bare `ruff` may be a different version installed elsewhere (Homebrew, pipx), and other versions format some code differently and will produce unrelated changes. Without the virtual environment, `uvx ruff@0.17.0 format .` runs the pinned version.
 
 2. **Run the examples.**
 
@@ -42,7 +44,7 @@ Python 3.11 or later is required. Conversion, detection and validation run witho
 - **Keep pipeline logic in the stage modules** (`vlmd_*.py`), not in `run_pipeline.py` or `chat_pipeline.py`, which both drive the same stages.
 - **Treat exit codes and the JSON files in `work/` as a public interface.** Bots drive the pipeline through them, so changing what a code means or how a file is laid out is a breaking change. Call it out in the pull request.
 - **Never commit participant data or credentials.** `.env`, `work/` and `output/` are gitignored; check `git status` before committing anything from them. Use synthetic data dictionaries for examples, and before committing a real one (as a test fixture, say), confirm that the study's data dictionary is cleared for sharing. The study-specific mappings in `formats/` (`{applid}.yaml`, `HDP*.yaml`) are committed on purpose: they record a column mapping a person confirmed and contain no data values.
-- **Bump Ruff deliberately.** To move to a new Ruff version, change the pin in `requirements-dev.txt`, run `ruff format .` and commit the result as its own commit containing nothing else. Then add that commit's full SHA to `.git-blame-ignore-revs` so `git blame` skips it.
+- **Bump Ruff deliberately.** Move to a new Ruff version in one pull request with three commits: first change the pin in `requirements-dev.txt`; then run `python -m ruff format .` and commit the result as its own commit containing nothing else; then add that commit's full SHA to `.git-blame-ignore-revs` so `git blame` skips it. Keeping the pin change out of the reformat commit means `git blame` still shows who changed the pin.
 
 ## Pull requests
 
