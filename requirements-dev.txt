@@ -1,3 +1,4 @@
 -r requirements.txt
+pytest>=8
 # Pinned: Ruff's formatting and default rules change between releases.
 ruff==0.17.0
