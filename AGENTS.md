@@ -14,7 +14,7 @@ pip install -r requirements-dev.txt      # requirements.txt + pinned Ruff; pyrea
 cp .env.template .env                    # only needed for LLM steps
 
 # Format Python code before committing
-ruff format .
+python -m ruff format .
 
 # Smoke test — the only automated check in the repo. Exit 0 = all three examples convert and pass schema validation.
 python examples/run_examples.py
@@ -35,7 +35,7 @@ python chat_pipeline.py --input demo/demo_dd.csv --hdp-id DEMO001
 python probe_azure.py
 ```
 
-Python code is formatted with `ruff format`, configured in `ruff.toml`. Ruff is pinned in `requirements-dev.txt` because its formatting changes between releases: bump it deliberately, and re-run `ruff format .` in the same change. `.git-blame-ignore-revs` lists bulk reformat commits so `git blame` skips them. A PR that adds a SHA to it must be merged with a merge commit, not a squash or rebase, or the SHA won't exist on `main`.
+Python code (including Python blocks in Markdown files) is formatted with `python -m ruff format .`, configured in `ruff.toml`, using the Ruff version pinned in `requirements-dev.txt`. Before bumping that pin or touching `.git-blame-ignore-revs`, read "Bump Ruff deliberately" and the pull request rules in `CONTRIBUTING.md`.
 
 There is no test suite. `examples/run_examples.py` runs `--skip-llm --no-detect` against the three synthetic CSVs in `examples/` and validates the output; run it after touching any stage. If `healdata_utils` can't be imported, validation fails rather than being skipped, so a broken environment shows up as FAIL (exit 2), not a false PASS. `work/`, `output/` and `examples/output/` are gitignored scratch.
 

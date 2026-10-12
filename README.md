@@ -642,15 +642,7 @@ python run_pipeline.py \
 
 ## Development
 
-```bash
-pip install -r requirements-dev.txt   # requirements.txt + Ruff
-ruff format .                         # format Python code before committing
-git config blame.ignoreRevsFile .git-blame-ignore-revs   # once: skip bulk reformat commits in git blame
-```
-
-Ruff is pinned to one version in `requirements-dev.txt`, because its formatting changes between releases.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for what a pull request needs before review.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setting up a development environment, formatting with Ruff, and what a pull request needs before review.
 
 ---
 
