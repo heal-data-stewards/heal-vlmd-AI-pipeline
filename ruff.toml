@@ -4,3 +4,11 @@
 target-version = "py311"
 line-length = 100
 extend-exclude = [".idea"]
+
+[lint]
+# Ruff's defaults, plus import sorting.
+extend-select = ["I"]
+
+[lint.per-file-ignores]
+# A diagnostic script: it catches every error on purpose and sorts it by message.
+"probe_azure.py" = ["BLE001"]

@@ -96,7 +96,8 @@ def process_chunk(
             raise RuntimeError(f"JSON parse failed after {MAX_RETRIES} retries: {e}")
 
     if not isinstance(parsed, list):
-        raise ValueError(f"Expected JSON array, got {type(parsed).__name__}")
+        # Malformed LLM output is a bad value, not a caller passing the wrong type.
+        raise ValueError(f"Expected JSON array, got {type(parsed).__name__}")  # noqa: TRY004
 
     # Unwrap {field, justification, sources} wrapper if present
     unwrapped = []
@@ -198,7 +199,7 @@ def fixup(
                     "Starting fresh.",
                     flush=True,
                 )
-        except Exception:
+        except (OSError, ValueError, AttributeError):
             checkpoint = {}
 
     chunks = [
@@ -218,7 +219,8 @@ def fixup(
 
         try:
             wrapped = process_chunk(system, base_prompt, chunk, model_key)
-        except Exception as e:
+        # Any chunk failure stops the stage with exit 1; the checkpoint lets a re-run resume.
+        except Exception as e:  # noqa: BLE001
             print(f"\nERROR in chunk {i}: {e}", file=sys.stderr)
             return 1
 

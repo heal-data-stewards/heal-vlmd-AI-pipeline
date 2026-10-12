@@ -18,7 +18,7 @@ from pathlib import Path
 
 import yaml
 
-from cli_ui import bold, bold_yellow, print_action_required
+from cli_ui import bold, print_action_required
 
 PIPELINE_DIR = Path(__file__).parent
 WORK_DIR = PIPELINE_DIR / "work"
@@ -148,11 +148,15 @@ def _apply_description_review_gate(
         print_action_required(
             "human review needed before LLM fixup",
             [
-                "Open " + bold(str(review_path)) + "\n"
-                '(flag_for_human entries are listed first, with "decision" left blank —\n'
-                "everything else is pre-filled with a suggestion to check)",
-                'Fill in every blank "decision" with "send_to_llm" or "leave_as_is";\n'
-                "edit any pre-filled suggestion you disagree with too",
+                (
+                    "Open " + bold(str(review_path)) + "\n"
+                    '(flag_for_human entries are listed first, with "decision" left blank —\n'
+                    "everything else is pre-filled with a suggestion to check)"
+                ),
+                (
+                    'Fill in every blank "decision" with "send_to_llm" or "leave_as_is";\n'
+                    "edit any pre-filled suggestion you disagree with too"
+                ),
                 "Re-run with:\n" + bold(rerun_cmd),
             ],
         )
@@ -269,7 +273,7 @@ def run(
     # ── Step 0: HEAL platform lookup ─────────────────────────────────────────
     if hdp_id:
         _banner("Step 0: HEAL platform lookup")
-        from vlmd_lookup import lookup, confirm_study
+        from vlmd_lookup import confirm_study, lookup
 
         resolved_appl_id, study_info = lookup(hdp_id, appl_id if appl_id != "unknown" else None)
 

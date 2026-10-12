@@ -86,8 +86,7 @@ def _get_azure_client():
                 max_retries=2,
             )
         else:
-            if endpoint.endswith("/openai"):
-                endpoint = endpoint[: -len("/openai")]
+            endpoint = endpoint.removesuffix("/openai")
             version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
             _azure_client = AzureOpenAI(
                 api_key=key,
@@ -134,7 +133,7 @@ def _call_azure(
             kwargs["max_tokens"] = max_tokens
         resp = c.chat.completions.create(**kwargs)
         return resp.choices[0].message.content.strip(), True, ""
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes an error result
         return "", False, str(e)
 
 
@@ -153,7 +152,7 @@ def _call_anthropic(
             kwargs["temperature"] = temperature
         resp = c.messages.create(**kwargs)
         return resp.content[0].text.strip(), True, ""
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes an error result
         return "", False, str(e)
 
 

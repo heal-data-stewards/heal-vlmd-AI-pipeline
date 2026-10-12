@@ -46,7 +46,7 @@ def load_all_formats(formats_dir: Path = FORMATS_DIR) -> dict[str, dict]:
             key = spec.get("format_name", f.stem)
             spec["_yaml_path"] = str(f)
             specs[key] = spec
-        except Exception as e:
+        except (OSError, ValueError, yaml.YAMLError, AttributeError) as e:
             print(f"  WARNING: could not load {f.name}: {e}", file=sys.stderr)
     return specs
 
@@ -61,7 +61,7 @@ def read_file_preview(file_path: str) -> tuple[list[str], list[dict], int]:
         try:
             import pyreadstat
 
-            df, meta = pyreadstat.read_dta(str(p))
+            df, _meta = pyreadstat.read_dta(str(p))
             cols = list(df.columns)
             rows = df.head(SAMPLE_ROWS).to_dict(orient="records")
             return cols, rows, len(df)
@@ -81,7 +81,8 @@ def read_file_preview(file_path: str) -> tuple[list[str], list[dict], int]:
         )
         cols = list(df.columns)
         rows = df.head(SAMPLE_ROWS).to_dict(orient="records")
-        total = sum(1 for _ in open(file_path, encoding=encoding, errors="replace")) - 1
+        with open(file_path, encoding=encoding, errors="replace") as fh:
+            total = sum(1 for _ in fh) - 1
         return cols, rows, total
 
 

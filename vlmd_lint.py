@@ -24,7 +24,7 @@ def lint(fields_path: str, report_path: str, title: str = "HEAL Study Data Dicti
         from healdata_utils import validate_vlmd_json
 
         result = validate_vlmd_json(vlmd_doc)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- validator failure of any kind is exit 1
         print(f"ERROR: validate_vlmd_json() failed: {e}", file=sys.stderr)
         return 1
 

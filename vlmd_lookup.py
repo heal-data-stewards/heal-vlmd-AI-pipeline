@@ -12,7 +12,6 @@ import json
 import sys
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 from cli_ui import bold, bold_yellow
 
@@ -140,14 +139,18 @@ def lookup(hdp_id: str, provided_appl_id: str | None = None) -> tuple[str | None
 
     fetched_appl_id = info.get("appl_id")
 
-    if provided_appl_id and provided_appl_id != "unknown" and fetched_appl_id:
-        if str(provided_appl_id) != str(fetched_appl_id):
-            print(
-                f"  WARNING: --appl-id {provided_appl_id} does not match the platform "
-                f"record ({fetched_appl_id}). Using the provided value.",
-                file=sys.stderr,
-            )
-            return provided_appl_id, info
+    if (
+        provided_appl_id
+        and provided_appl_id != "unknown"
+        and fetched_appl_id
+        and str(provided_appl_id) != str(fetched_appl_id)
+    ):
+        print(
+            f"  WARNING: --appl-id {provided_appl_id} does not match the platform "
+            f"record ({fetched_appl_id}). Using the provided value.",
+            file=sys.stderr,
+        )
+        return provided_appl_id, info
 
     return fetched_appl_id or provided_appl_id, info
 

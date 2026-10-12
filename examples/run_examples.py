@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from run_pipeline import run  # noqa: E402
+from run_pipeline import run
 
 EXAMPLES_DIR = Path(__file__).parent
 OUTPUT_DIR = EXAMPLES_DIR / "output"
