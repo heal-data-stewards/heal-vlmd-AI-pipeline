@@ -132,7 +132,12 @@ def _call_azure(
         else:
             kwargs["max_tokens"] = max_tokens
         resp = c.chat.completions.create(**kwargs)
-        return resp.choices[0].message.content.strip(), True, ""
+        choice = resp.choices[0]
+        if choice.message.content is None:
+            # A content-filtered or refused reply has no content. Say so, rather
+            # than reporting the AttributeError that .strip() on None would raise.
+            return "", False, f"model returned no content (finish_reason={choice.finish_reason})"
+        return choice.message.content.strip(), True, ""
     except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes an error result
         return "", False, str(e)
 
@@ -151,6 +156,8 @@ def _call_anthropic(
         if model_cfg.get("supports_temperature", True):
             kwargs["temperature"] = temperature
         resp = c.messages.create(**kwargs)
+        if not resp.content:
+            return "", False, f"model returned no content (stop_reason={resp.stop_reason})"
         return resp.content[0].text.strip(), True, ""
     except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes an error result
         return "", False, str(e)
