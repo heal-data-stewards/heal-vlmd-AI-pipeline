@@ -1,4 +1,4 @@
-"""Conversational VLMD conversion pipeline — prototype (issue #15).
+"""Conversational VLMD conversion pipeline — prototype.
 
 Unlike run_pipeline.py (which stays the non-interactive batch entry point),
 this is a Python generator that pauses at defined checkpoints and resumes via
@@ -246,20 +246,37 @@ def run_conversational(
     # ── merge ───────────────────────────────────────────────────────────────
     from vlmd_merge import merge
 
-    merge(
+    # merge() validates the final document; report its real result rather than
+    # an unconditional "Done!" (it used to be ignored here).
+    errors: list[str] = []
+    rc = merge(
         converted_path, fixes_path, str(vlmd_out), hdp_id, appl_id, title,
         "DataDictionary", format_name, validate=True, file_stem=file_stem,
-        input_filename=Path(input_file).name,
+        input_filename=Path(input_file).name, errors_out=errors,
     )
+    final_valid = rc == 0
+
+    field_count = len(json.loads(Path(converted_path).read_text()))
+    if final_valid:
+        message = (
+            f"Done! Converted {field_count} fields "
+            f"({len(lint_records)} were flagged and sent through LLM fixup). "
+            f"The final output is schema-valid. Output in {vlmd_out}"
+        )
+    else:
+        preview = "; ".join(errors[:3]) or "(no error detail available)"
+        more = f" ...and {len(errors) - 3} more" if len(errors) > 3 else ""
+        message = (
+            f"Converted {field_count} fields, but the final merged output is NOT "
+            f"schema-valid ({len(errors)} error(s)): {preview}{more}. Files were "
+            f"still written to {vlmd_out} for inspection, but this needs fixing "
+            f"before it's ready to use."
+        )
 
     yield Prompt(
         kind="done",
-        message=(
-            f"Done! Converted {len(json.loads(Path(converted_path).read_text()))} fields "
-            f"({len(lint_records)} were flagged and sent through LLM fixup). "
-            "Output in " + str(vlmd_out)
-        ),
-        payload={"output_dir": str(vlmd_out)},
+        message=message,
+        payload={"output_dir": str(vlmd_out), "valid": final_valid, "error_count": len(errors)},
     )
 
 
@@ -281,7 +298,7 @@ def _terminal_demo(input_file: str, hdp_id: str, model: str, format_yaml: str | 
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Conversational VLMD pipeline prototype (issue #15)")
+    ap = argparse.ArgumentParser(description="Conversational VLMD pipeline prototype")
     ap.add_argument("--input", required=True)
     ap.add_argument("--hdp-id", default="")
     ap.add_argument("--model", default="azure-gpt-4.1-mini")

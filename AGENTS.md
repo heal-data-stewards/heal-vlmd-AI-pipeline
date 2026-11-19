@@ -28,6 +28,10 @@ python vlmd_lint.py --fields work/x.json --report work/val.json --title "X"
 # Conversational prototype (generator with pause points)
 python chat_pipeline.py --input demo/demo_dd.csv --hdp-id DEMO001
 
+# MCP server (streamable HTTP on :8090/mcp) and its manual smoke test
+python -m mcp_server.server
+python mcp_server/verify.py
+
 # Check Azure deployment names / endpoint shape when LLM calls fail
 python probe_azure.py
 ```
@@ -36,7 +40,7 @@ There is no test suite and no linter config. `examples/run_examples.py` runs `--
 
 ## Architecture
 
-**Stage chain.** `run_pipeline.run()` imports and calls each stage's function directly (no subprocesses): (`vlmd_pdf` / `vlmd_excel` →) (`vlmd_lookup` →) `vlmd_detect` → `vlmd_convert` → `vlmd_lint` → (`vlmd_description_triage` →) `vlmd_fixup` → `vlmd_merge`. PDF/Excel extraction runs first, before the lookup, so it can't use the looked-up APPL_ID or title; the lookup runs only when `--hdp-id` is given. State between stages is JSON files in `work/{hdp-id}/` (`work/scratch/` without `--hdp-id`), so any stage can be re-run standalone from the files the previous one left. `chat_pipeline.py` reuses the same stage functions, reordered as a generator that `yield`s `Prompt` objects at checkpoints and resumes via `.send()`; keep pipeline logic in the stage modules, not in either driver.
+**Stage chain.** `run_pipeline.run()` imports and calls each stage's function directly (no subprocesses): (`vlmd_pdf` / `vlmd_excel` →) (`vlmd_lookup` →) `vlmd_detect` → `vlmd_convert` → `vlmd_lint` → (`vlmd_description_triage` →) `vlmd_fixup` → `vlmd_merge`. PDF/Excel extraction runs first, before the lookup, so it can't use the looked-up APPL_ID or title; the lookup runs only when `--hdp-id` is given. State between stages is JSON files in `work/{hdp-id}/` (`work/scratch/` without `--hdp-id`), so any stage can be re-run standalone from the files the previous one left. `chat_pipeline.py` reuses the same stage functions, reordered as a generator that `yield`s `Prompt` objects at checkpoints and resumes via `.send()`. `mcp_server/server.py` exposes them as stateless MCP tools that take file paths in and out; `mcp_server/skill.md` is the agent-facing workflow, so update it when a tool's contract changes. Keep pipeline logic in the stage modules, not in any of these drivers.
 
 **Formats are data, not code.** Each supported input lives in `formats/*.yaml` (column mapping, `levels.format` parser choice, `custom_columns`, `excluded_columns` with reasons, prompt paths, and `detection.signature_columns` with strong/supporting weights). `vlmd_convert.py` interprets the YAML; `vlmd_detect.py` scores every YAML's signature columns against the input header and falls back to an LLM only if nothing clears the threshold. A top score that clears the threshold but is within `AMBIGUITY_GAP` of the runner-up is still returned (with `ambiguous: True`) and `run_pipeline` uses it without further review. Adding a format = adding a YAML (plus optionally a prompt in `prompts/`). `formats/{applid}.yaml` and `formats/HDP*.yaml` files are study-specific mappings saved by `vlmd_interview.py save` after a user confirmed an LLM-proposed mapping; they are legitimate committed artifacts, not clutter.
 
