@@ -246,31 +246,15 @@ def run_conversational(
     # ── merge ───────────────────────────────────────────────────────────────
     from vlmd_merge import merge
 
-    merge(
+    # merge() validates the final document; report its real result rather than
+    # an unconditional "Done!" (it used to be ignored here).
+    errors: list[str] = []
+    rc = merge(
         converted_path, fixes_path, str(vlmd_out), hdp_id, appl_id, title,
         "DataDictionary", format_name, validate=True, file_stem=file_stem,
-        input_filename=Path(input_file).name,
+        input_filename=Path(input_file).name, errors_out=errors,
     )
-
-    # merge()'s own validate=True already re-validates the final merged
-    # document and returns a pass/fail exit code — this used to be computed
-    # and then thrown away entirely here, so a user could see "Done!" below
-    # even when the final output fails schema validation. Re-validate the
-    # actual written file directly (the same healdata_utils call
-    # vlmd_merge.py's own validate_output() uses internally) so the real
-    # pass/fail AND error list can be reported honestly instead of trusting
-    # an unconditional success message.
-    from healdata_utils import validate_vlmd_json
-
-    final_json_path = vlmd_out / f"{file_stem}.vlmd.json"
-    final_valid = False
-    errors: list[str] = []
-    if final_json_path.exists():
-        final_doc = json.loads(final_json_path.read_text(encoding="utf-8"))
-        result = validate_vlmd_json(final_doc)
-        report = result.get("report", result)
-        final_valid = report.get("valid", False)
-        errors = report.get("errors", [])
+    final_valid = rc == 0
 
     field_count = len(json.loads(Path(converted_path).read_text()))
     if final_valid:
@@ -280,7 +264,7 @@ def run_conversational(
             f"The final output is schema-valid. Output in {vlmd_out}"
         )
     else:
-        preview = "; ".join(errors[:3]) or "(no error detail available — output file may be missing)"
+        preview = "; ".join(errors[:3]) or "(no error detail available)"
         more = f" ...and {len(errors) - 3} more" if len(errors) > 3 else ""
         message = (
             f"Converted {field_count} fields, but the final merged output is NOT "

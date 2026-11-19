@@ -167,32 +167,54 @@ def normalize_fields(fields: list) -> list:
     return fields
 
 
-def validate_output(vlmd_doc: dict) -> bool:
+def _format_validation_error(e) -> str:
+    """validate_vlmd_json reports each error as {"json_path", "message"}; make it a string."""
+    if isinstance(e, dict) and "message" in e:
+        path = e.get("json_path")
+        return f"{path}: {e['message']}" if path else str(e["message"])
+    return str(e)
+
+
+def validation_errors(vlmd_doc: dict) -> tuple[bool, list[str]]:
+    """Validate a full VLMD document. Returns (valid, errors as readable strings).
+
+    Fails closed: a validator that can't run (e.g. healdata_utils missing a
+    transitive dependency) returns (False, [reason]) so unvalidated output
+    never passes.
+    """
     try:
         from healdata_utils import validate_vlmd_json
         result = validate_vlmd_json(vlmd_doc)
-        report = result.get("report", result)
-        is_valid = report.get("valid", False)
-        errors = report.get("errors", [])
-        print(f"  Validation: valid={is_valid}, errors={len(errors)}", flush=True)
-        if errors:
-            for e in errors[:5]:
-                print(f"    - {e}", flush=True)
-            if len(errors) > 5:
-                print(f"    ... and {len(errors) - 5} more", flush=True)
-        return is_valid
     except Exception as e:
-        # Fail closed: a validator that can't run (e.g. healdata_utils missing
-        # a transitive dependency) must not let unvalidated output through.
-        print(f"  ERROR: validation could not run ({e})", flush=True)
-        return False
+        return False, [f"validation could not run ({e})"]
+    report = result.get("report", result)
+    errors = [_format_validation_error(e) for e in report.get("errors", [])]
+    return bool(report.get("valid", False)), errors
+
+
+def validate_output(vlmd_doc: dict, errors_out: list[str] | None = None) -> bool:
+    """Validate and print a summary. Appends the errors to errors_out if given."""
+    is_valid, errors = validation_errors(vlmd_doc)
+    if errors_out is not None:
+        errors_out.extend(errors)
+    print(f"  Validation: valid={is_valid}, errors={len(errors)}", flush=True)
+    for e in errors[:5]:
+        print(f"    - {e}", flush=True)
+    if len(errors) > 5:
+        print(f"    ... and {len(errors) - 5} more", flush=True)
+    return is_valid
 
 
 def merge(converted_path: str, fixes_path: str | None, output_dir: str,
           hdp_id: str, appl_id: str, title: str,
           study_label: str, format_name: str, validate: bool,
           file_stem: str | None = None,
-          input_filename: str | None = None) -> int:
+          input_filename: str | None = None,
+          errors_out: list[str] | None = None) -> int:
+    """Merge fixes, write the VLMD files, and return 0, or 2 if validation failed.
+
+    If errors_out is given, the validation errors (as strings) are appended to it.
+    """
     fields = json.loads(Path(converted_path).read_text(encoding="utf-8"))
     print(f"Loaded {len(fields):,} converted fields", flush=True)
 
@@ -226,7 +248,7 @@ def merge(converted_path: str, fixes_path: str | None, output_dir: str,
     # Validate before writing — gate output on schema validity
     validation_passed = True
     if validate:
-        validation_passed = validate_output(vlmd_doc)
+        validation_passed = validate_output(vlmd_doc, errors_out)
 
     json_path = out / f"{stem}.vlmd.json"
     json_path.write_text(
