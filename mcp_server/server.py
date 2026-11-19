@@ -264,6 +264,14 @@ def validate_vlmd(fields_path: str, report_path: str, title: str = "HEAL Study D
     from vlmd_merge import format_validation_error
 
     rc = lint(fields_path, report_path, title)
+    if rc == 1:
+        # lint() returns 1 without writing report_path when the validator itself
+        # can't run, so any report there is stale. Never read it as a result.
+        return _fail(
+            "The schema validator could not run (see the server log), so this "
+            "file has NOT been validated. Don't treat it as valid or invalid.",
+            valid=False,
+        )
     import json
     report = json.loads(Path(report_path).read_text(encoding="utf-8"))
     errors = [format_validation_error(e) for e in report.get("errors", [])]
