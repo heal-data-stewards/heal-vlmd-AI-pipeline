@@ -691,34 +691,35 @@ vlmd_detect.py                                                         │
 python chat_pipeline.py --input demo/demo_dd.csv --hdp-id DEMO001
 ```
 
-### Possible MCP server
+### MCP server
 
-An MCP server could expose these tools, letting any MCP-compatible client (Claude Desktop, a web chatbot, etc.) drive the pipeline conversationally. Nothing below is implemented:
+`mcp_server/` exposes the pipeline stages as tools for any MCP client (a chat agent, Claude Desktop, MCP Inspector). The tools are thin wrappers around the `vlmd_*.py` functions and hold no state: every tool takes file paths in and out.
 
-```python
-# mcp_server.py (stub — not yet implemented)
+| Tool | Wraps | Notes |
+|------|-------|-------|
+| `get_file_info` | — | Size and extension of a file |
+| `detect_format` | `vlmd_detect.detect` | Also returns row/column counts, column names and sample rows |
+| `list_excel_sheets` / `extract_excel_sheet` | `vlmd_excel` | |
+| `extract_pdf_table` | `vlmd_pdf.extract` | Uses the LLM |
+| `convert_to_vlmd` | `vlmd_convert.convert` | |
+| `validate_vlmd` | `vlmd_lint.lint` | Takes a bare field list (`convert_to_vlmd`'s output), not a merged `.vlmd.json` |
+| `fixup_flagged_fields` | `vlmd_fixup.fixup` | Uses the LLM; `excluded_columns` keeps source columns out of the prompt |
+| `merge_vlmd` | `vlmd_merge.merge` | Final write; returns `valid`, `error_count` and `errors` |
+| `save_format_mapping` | `vlmd_interview.save_format` | |
 
-@mcp.tool()
-def lookup_study(hdp_id: str) -> dict:
-    """Fetch study info from the HEAL platform. Returns appl_id, study_name, investigators."""
-    ...
+`validate_vlmd` and `merge_vlmd` return `{valid, error_count, errors, truncated}`. Errors are strings, at most 10, with `truncated` set when there were more. The resource `skill://vlmd-conversion` (`mcp_server/skill.md`) holds the instructions for driving the tools conversationally, including which calls need the user's confirmation first.
 
-@mcp.tool()
-def detect_format(file_path: str, model: str = "azure-gpt-4.1-mini") -> dict:
-    """Detect the format of a data dictionary file."""
-    ...
+Run it from the repo root (it serves streamable HTTP at `/mcp`; needs `mcp>=2.0`, in `requirements.txt`):
 
-@mcp.tool()
-def save_format_mapping(applid: str, mapping: dict, hdp_id: str = "") -> dict:
-    """Save a confirmed column mapping as formats/{applid}.yaml for future reuse."""
-    ...
-
-@mcp.tool()
-def run_conversion(file_path: str, format_yaml: str, appl_id: str,
-                   hdp_id: str = "", dest_dir: str = "") -> dict:
-    """Run the full conversion pipeline. Returns output file paths and validation status."""
-    ...
+```bash
+python -m mcp_server.server                      # MCP_SERVER_HOST / MCP_SERVER_PORT, default 0.0.0.0:8090
+python mcp_server/verify.py                      # manual smoke test against a running server (MCP_URL)
+docker build -f mcp_server/Dockerfile .          # build context is the repo root
 ```
+
+File paths are resolved on the server's filesystem, so in a container callers must pass paths under the volume they share with it. LLM tools read credentials from the server's `.env` or environment.
+
+> **Keep the server private.** It has no authentication and doesn't yet restrict which paths a tool may read or write (#54). Run it only where untrusted clients can't reach it.
 
 ### Calling the pipeline from Python
 
@@ -773,6 +774,7 @@ heal-vlmd-AI-pipeline/
 │
 ├── run_pipeline.py              One-command orchestrator (pure Python)
 ├── chat_pipeline.py             Conversational prototype: same stages as a resumable generator
+├── mcp_server/                  MCP server exposing the stages as tools (server.py, skill.md, verify.py, Dockerfile)
 │
 ├── vlmd_excel.py                Excel pre-processor — one sheet → CSV (no LLM)
 ├── vlmd_pdf.py                  PDF pre-processor — pdfplumber + LLM → generic-csv CSV
