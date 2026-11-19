@@ -315,17 +315,22 @@ def fixup_flagged_fields(
     from vlmd_fixup import fixup
     from llm_client import DEFAULT_MODEL
 
-    lint_path_obj = Path(lint_path)
+    fixup_input = lint_path
     if excluded_columns:
         import json
 
-        records = json.loads(lint_path_obj.read_text(encoding="utf-8"))
+        # Filter into a copy next to output_path; the caller's lint file stays
+        # intact so a later call can exclude a different set of columns.
+        records = json.loads(Path(lint_path).read_text(encoding="utf-8"))
         for rec in records:
             sr = rec.get("source_row") or {}
             rec["source_row"] = {k: v for k, v in sr.items() if k not in excluded_columns}
-        lint_path_obj.write_text(json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8")
+        out = Path(output_path)
+        filtered = out.with_name(f"{out.stem}.lint_filtered.json")
+        filtered.write_text(json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8")
+        fixup_input = str(filtered)
 
-    rc = fixup(lint_path, output_path, checkpoint_path, format_yaml, DEFAULT_MODEL)
+    rc = fixup(fixup_input, output_path, checkpoint_path, format_yaml, DEFAULT_MODEL)
     if rc != 0:
         return _fail("Fixup hit an unrecoverable error on one chunk — check the checkpoint file and retry.")
     import json
