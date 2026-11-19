@@ -26,6 +26,7 @@ Reads MCP_SERVER_HOST / MCP_SERVER_PORT from the environment (defaults
 0.0.0.0:8090), matching the host/port conventions of the sibling wrapper/
 ai-pipeline services in docker-compose.yml.
 """
+
 from __future__ import annotations
 
 import os
@@ -42,7 +43,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from mcp.server.mcpserver import MCPServer  # noqa: E402
+from mcp.server.mcpserver import MCPServer
 
 mcp = MCPServer(
     name="vlmd-pipeline",
@@ -73,6 +74,7 @@ def _fail(error: str, **fields: Any) -> dict:
 # call anywhere in the vlmd_*.py modules).
 # ---------------------------------------------------------------------------
 
+
 @mcp.tool()
 def get_file_info(file_path: str) -> dict:
     """Get basic facts about an uploaded file: size in bytes and extension.
@@ -97,6 +99,7 @@ def get_file_info(file_path: str) -> dict:
 # ---------------------------------------------------------------------------
 # Detect
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 def detect_format(file_path: str, llm_fallback: bool = True) -> dict:
@@ -133,6 +136,7 @@ def detect_format(file_path: str, llm_fallback: bool = True) -> dict:
 # Excel
 # ---------------------------------------------------------------------------
 
+
 @mcp.tool()
 def list_excel_sheets(xlsx_path: str) -> dict:
     """List every sheet in an Excel workbook with its row/column count.
@@ -144,10 +148,11 @@ def list_excel_sheets(xlsx_path: str) -> dict:
     from vlmd_excel import list_sheets
 
     sheets = list_sheets(xlsx_path)
-    return _ok(sheets=[
-        {"name": name, "row_count": rows, "column_count": cols}
-        for name, rows, cols in sheets
-    ])
+    return _ok(
+        sheets=[
+            {"name": name, "row_count": rows, "column_count": cols} for name, rows, cols in sheets
+        ]
+    )
 
 
 @mcp.tool()
@@ -176,6 +181,7 @@ def extract_excel_sheet(xlsx_path: str, output_csv: str, sheet_name: str | None 
 # PDF
 # ---------------------------------------------------------------------------
 
+
 @mcp.tool()
 def extract_pdf_table(pdf_path: str, output_csv: str) -> dict:
     """Extract a data dictionary's variable table out of a PDF into a CSV,
@@ -203,8 +209,11 @@ def extract_pdf_table(pdf_path: str, output_csv: str) -> dict:
 # Convert
 # ---------------------------------------------------------------------------
 
+
 @mcp.tool()
-def convert_to_vlmd(input_path: str, format_yaml: str, output_fields: str, output_lint: str) -> dict:
+def convert_to_vlmd(
+    input_path: str, format_yaml: str, output_fields: str, output_lint: str
+) -> dict:
     """Convert a data dictionary file to VLMD fields using a confirmed format
     mapping (a format_yaml path — from detect_format's format_yaml_path, or
     from save_format_mapping if the format was unrecognized and a mapping
@@ -228,6 +237,7 @@ def convert_to_vlmd(input_path: str, format_yaml: str, output_fields: str, outpu
             "file's actual columns."
         )
     import json
+
     lint_records = json.loads(Path(output_lint).read_text(encoding="utf-8"))
     return _ok(
         output_fields=output_fields,
@@ -242,8 +252,11 @@ def convert_to_vlmd(input_path: str, format_yaml: str, output_fields: str, outpu
 # then never read it.
 # ---------------------------------------------------------------------------
 
+
 @mcp.tool()
-def validate_vlmd(fields_path: str, report_path: str, title: str = "HEAL Study Data Dictionary") -> dict:
+def validate_vlmd(
+    fields_path: str, report_path: str, title: str = "HEAL Study Data Dictionary"
+) -> dict:
     """Validate a VLMD fields JSON file against the HEAL VLMD schema.
 
     fields_path must be a bare list of fields, such as convert_to_vlmd's
@@ -273,6 +286,7 @@ def validate_vlmd(fields_path: str, report_path: str, title: str = "HEAL Study D
             valid=False,
         )
     import json
+
     report = json.loads(Path(report_path).read_text(encoding="utf-8"))
     errors = [format_validation_error(e) for e in report.get("errors", [])]
     return _ok(
@@ -287,6 +301,7 @@ def validate_vlmd(fields_path: str, report_path: str, title: str = "HEAL Study D
 # ---------------------------------------------------------------------------
 # Fixup
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 def fixup_flagged_fields(
@@ -312,8 +327,8 @@ def fixup_flagged_fields(
     Returns: output_path (fixed field records, ready for merge_vlmd's
     fixes_path argument), fixed_count.
     """
-    from vlmd_fixup import fixup
     from llm_client import DEFAULT_MODEL
+    from vlmd_fixup import fixup
 
     fixup_input = lint_path
     if excluded_columns:
@@ -332,8 +347,11 @@ def fixup_flagged_fields(
 
     rc = fixup(fixup_input, output_path, checkpoint_path, format_yaml, DEFAULT_MODEL)
     if rc != 0:
-        return _fail("Fixup hit an unrecoverable error on one chunk — check the checkpoint file and retry.")
+        return _fail(
+            "Fixup hit an unrecoverable error on one chunk — check the checkpoint file and retry."
+        )
     import json
+
     fixed = json.loads(Path(output_path).read_text(encoding="utf-8"))
     return _ok(output_path=output_path, fixed_count=len(fixed))
 
@@ -343,6 +361,7 @@ def fixup_flagged_fields(
 # to be silently discarded (chat_pipeline.py called merge(..., validate=True)
 # but never looked at the return code).
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 def merge_vlmd(
@@ -378,9 +397,18 @@ def merge_vlmd(
 
     errors: list[str] = []
     rc = merge(
-        converted_path, fixes_path, output_dir, hdp_id, appl_id, title,
-        study_label, format_name, validate=True,
-        file_stem=file_stem, input_filename=input_filename, errors_out=errors,
+        converted_path,
+        fixes_path,
+        output_dir,
+        hdp_id,
+        appl_id,
+        title,
+        study_label,
+        format_name,
+        validate=True,
+        file_stem=file_stem,
+        input_filename=input_filename,
+        errors_out=errors,
     )
     stem = file_stem or f"{appl_id}_{study_label.replace(' ', '_')}"
     out = Path(output_dir)
@@ -398,6 +426,7 @@ def merge_vlmd(
 # ---------------------------------------------------------------------------
 # Save a confirmed format mapping
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 def save_format_mapping(
@@ -427,6 +456,7 @@ def save_format_mapping(
 # resource (not a bare file path the agent has to separately know about).
 # Content drafted alongside the chat agent that consumes it (Phase 2).
 # ---------------------------------------------------------------------------
+
 
 @mcp.resource("skill://vlmd-conversion")
 def vlmd_conversion_skill() -> str:
