@@ -246,24 +246,27 @@ def convert_to_vlmd(input_path: str, format_yaml: str, output_fields: str, outpu
 def validate_vlmd(fields_path: str, report_path: str, title: str = "HEAL Study Data Dictionary") -> dict:
     """Validate a VLMD fields JSON file against the HEAL VLMD schema.
 
+    fields_path must be a bare list of fields, such as convert_to_vlmd's
+    output_fields. Don't pass merge_vlmd's .vlmd.json here: that is a whole
+    document, not a field list, and would be reported invalid. merge_vlmd
+    validates the final document itself and returns valid/errors.
+
     YOU MUST CALL THIS before telling the user a conversion succeeded, and
-    AGAIN on the final merged output after merge_vlmd (merge_vlmd already
-    re-validates internally, but always read its returned valid/errors
-    fields too — never say "done" without having actually looked at a real
-    valid=True/False result from this tool or from merge_vlmd's return
-    value. Saying a conversion succeeded without checking this is exactly
-    the bug this tool exists to prevent.
+    read merge_vlmd's valid/errors after the final write — never say "done"
+    without having looked at a real valid=True/False result from this tool
+    or from merge_vlmd.
 
     Returns: valid (bool), error_count (int), errors (list of error strings,
     truncated to 10), truncated (bool — True if there were more than 10),
     report_path (where the full untruncated report was written).
     """
     from vlmd_lint import lint
+    from vlmd_merge import format_validation_error
 
     rc = lint(fields_path, report_path, title)
     import json
     report = json.loads(Path(report_path).read_text(encoding="utf-8"))
-    errors = report.get("errors", [])
+    errors = [format_validation_error(e) for e in report.get("errors", [])]
     return _ok(
         valid=(rc == 0),
         error_count=len(errors),
@@ -355,19 +358,24 @@ def merge_vlmd(
     validate_vlmd — this tool's own internal validation used to be computed
     and then thrown away by the caller.
 
-    Returns: valid (bool), output_dir, json_path, csv_path.
+    Returns: valid (bool), error_count (int), errors (list of error strings,
+    truncated to 10), truncated (bool), output_dir, json_path, csv_path.
     """
     from vlmd_merge import merge
 
+    errors: list[str] = []
     rc = merge(
         converted_path, fixes_path, output_dir, hdp_id, appl_id, title,
         study_label, format_name, validate=True,
-        file_stem=file_stem, input_filename=input_filename,
+        file_stem=file_stem, input_filename=input_filename, errors_out=errors,
     )
     stem = file_stem or f"{appl_id}_{study_label.replace(' ', '_')}"
     out = Path(output_dir)
     return _ok(
         valid=(rc == 0),
+        error_count=len(errors),
+        errors=errors[:10],
+        truncated=len(errors) > 10,
         output_dir=output_dir,
         json_path=str(out / f"{stem}.vlmd.json"),
         csv_path=str(out / f"{stem}.vlmd.csv"),

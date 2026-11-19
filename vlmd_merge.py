@@ -167,7 +167,7 @@ def normalize_fields(fields: list) -> list:
     return fields
 
 
-def _format_validation_error(e) -> str:
+def format_validation_error(e) -> str:
     """validate_vlmd_json reports each error as {"json_path", "message"}; make it a string."""
     if isinstance(e, dict) and "message" in e:
         path = e.get("json_path")
@@ -188,7 +188,7 @@ def validation_errors(vlmd_doc: dict) -> tuple[bool, list[str]]:
     except Exception as e:
         return False, [f"validation could not run ({e})"]
     report = result.get("report", result)
-    errors = [_format_validation_error(e) for e in report.get("errors", [])]
+    errors = [format_validation_error(e) for e in report.get("errors", [])]
     return bool(report.get("valid", False)), errors
 
 

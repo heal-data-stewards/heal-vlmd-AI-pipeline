@@ -52,7 +52,9 @@ facts, and the user needs to hear whichever one is actually true.
 3. `convert_to_vlmd` with the confirmed `format_yaml`.
 4. If fields were flagged, walk through the confirmation step above, then
    `fixup_flagged_fields`.
-5. `validate_vlmd` on the converted (or fixed) fields. Report the real result.
+5. `validate_vlmd` on the converted fields (`convert_to_vlmd`'s
+   `output_fields`). Report the real result. Don't pass it `merge_vlmd`'s
+   `.vlmd.json`: that's a whole document, not a field list.
 6. Confirm, then `merge_vlmd`. Report its real `valid` result too — this is
    the one that actually matters most, since it's the final output.
 
