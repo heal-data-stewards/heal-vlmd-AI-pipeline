@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 from cli_ui import print_progress
-from llm_client import call_llm, parse_json_response
+from llm_client import NO_CONTENT_ERROR, call_llm, parse_json_response
 
 MAX_ROWS_PER_CHUNK = 40
 MAX_TOKENS_OUT = 4096
@@ -84,6 +84,12 @@ def _ask(
     raw, ok, err = call_llm(SYSTEM_PROMPT, user_msg, model_key=model_key, max_tokens=max_tokens)
     if not ok:
         print(flush=True)
+        if err.startswith(NO_CONTENT_ERROR):
+            # A content-filtered or empty reply is unusable like a malformed one, so
+            # the retry and triage_failed paths handle it. Any other failure (network,
+            # credentials) would fail every chunk the same way, so it stops the run.
+            print(f"  WARNING: triage reply unusable: {err}", flush=True)
+            return {}
         raise RuntimeError(f"Triage LLM call failed: {err}")
     try:
         parsed = parse_json_response(raw)

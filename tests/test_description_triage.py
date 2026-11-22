@@ -64,7 +64,8 @@ def test_entries_for_fields_not_in_the_chunk_are_dropped(monkeypatch, tmp_path):
 # --- Malformed or incomplete replies ---
 # A reply that doesn't cover every field is retried once. Fields still uncovered
 # are flagged for a human with "triage_failed": True instead of aborting the
-# pipeline, and the chunk isn't checkpointed, so a re-run asks again.
+# pipeline, and the chunk isn't checkpointed, so a re-run asks again. A reply with
+# no content counts as unusable; any other failed call stops triage.
 
 
 @pytest.mark.parametrize(
@@ -153,6 +154,35 @@ def test_retry_allows_a_longer_reply(monkeypatch):
     monkeypatch.setattr(vlmd_description_triage, "call_llm", fake_call_llm)
     vlmd_description_triage.triage(candidates("a"), "test-model")
     assert limits[1] > limits[0]
+
+
+def call_results(monkeypatch, *results):
+    """Make call_llm return each (text, ok, error) tuple in turn."""
+    calls = iter(results)
+    monkeypatch.setattr(vlmd_description_triage, "call_llm", lambda *a, **kw: next(calls))
+
+
+def test_reply_with_no_content_is_treated_as_unusable(monkeypatch, tmp_path):
+    from llm_client import NO_CONTENT_ERROR
+
+    call_results(
+        monkeypatch,
+        (json.dumps([entry("a", "send_to_llm")]), True, ""),
+        ("", False, f"{NO_CONTENT_ERROR} (finish_reason=content_filter)"),
+    )
+    checkpoint = tmp_path / "checkpoint.json"
+    results = vlmd_description_triage.triage(
+        candidates("a", "b"), "test-model", checkpoint_path=str(checkpoint)
+    )
+    assert results["a"] == entry("a", "send_to_llm")
+    assert results["b"]["triage_failed"] is True
+    assert not checkpoint.exists()
+
+
+def test_failed_llm_call_stops_triage(monkeypatch):
+    call_results(monkeypatch, ("", False, "Connection error."))
+    with pytest.raises(RuntimeError, match="Connection error"):
+        vlmd_description_triage.triage(candidates("a"), "test-model")
 
 
 # --- Checkpoints ---
