@@ -50,6 +50,14 @@ def test_valid_reply_is_returned(monkeypatch, tmp_path):
     assert checkpoint.exists()
 
 
+@pytest.mark.parametrize("decision", ["maybe", "", None, ["leave_as_is"], {"x": 1}, 1])
+def test_unknown_decision_becomes_flag_for_human(monkeypatch, decision):
+    reply_with(monkeypatch, json.dumps([{"name": "a", "decision": decision}]))
+    results = vlmd_description_triage.triage(candidates("a"), "test-model")
+    assert results["a"]["decision"] == "flag_for_human"
+    assert not results["a"].get("triage_failed")
+
+
 def test_entries_for_fields_not_in_the_chunk_are_dropped(monkeypatch, tmp_path):
     reply_with(monkeypatch, json.dumps([entry("a"), entry("b"), entry("zzz"), entry("A")]))
     checkpoint = tmp_path / "checkpoint.json"
