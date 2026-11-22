@@ -11,6 +11,7 @@ it does not decide anything on its own; a human still approves before it's used.
 
 import json
 import time
+from enum import StrEnum
 from pathlib import Path
 
 from cli_ui import print_progress
@@ -23,12 +24,28 @@ MAX_TOKENS_OUT = 4096
 # llm_client.MODELS, so it's within all their output limits.
 RETRY_MAX_TOKENS_OUT = 8192
 PROMPTS_DIR = Path(__file__).parent / "prompts"
-VALID_DECISIONS = ("send_to_llm", "leave_as_is", "flag_for_human")
 RETRY_REMINDER = (
     "\n\nIMPORTANT: The previous response gave no usable answer for these fields. "
     "Return ONLY a valid JSON array with exactly one object per field above, each with "
     'the field\'s exact "name", a "decision" and a "justification". No prose or code fences.'
 )
+
+
+class Decision(StrEnum):
+    """What to do with a short/placeholder description.
+
+    A member equals its string value and is written to JSON as that string, so the
+    review and decisions files, and the LLM's replies, use the plain strings.
+    """
+
+    SEND_TO_LLM = "send_to_llm"  # rewrite it in the fixup step
+    LEAVE_AS_IS = "leave_as_is"  # drop the issue; the description stays
+    FLAG_FOR_HUMAN = "flag_for_human"  # only a suggestion: a human must pick one of the others
+
+
+# The decisions a human can put in the decisions file. FLAG_FOR_HUMAN is triage's way
+# of saying "no suggestion", not something the pipeline can act on.
+HUMAN_DECISIONS = (Decision.SEND_TO_LLM, Decision.LEAVE_AS_IS)
 
 SYSTEM_PROMPT = (
     "You are a careful data-dictionary reviewer. Your job is to classify flagged "
@@ -69,8 +86,9 @@ def _named_entries(parsed: object, names: set[str]) -> dict[str, dict]:
     entries: dict[str, dict] = {}
     for e in parsed:
         if isinstance(e, dict) and isinstance(e.get("name"), str) and e["name"] in names:
-            if e.get("decision") not in VALID_DECISIONS:
-                e["decision"] = "flag_for_human"
+            # A tuple, not a set: the LLM can send an unhashable decision such as a list.
+            if e.get("decision") not in tuple(Decision):
+                e["decision"] = Decision.FLAG_FOR_HUMAN
             entries[e["name"]] = e
     return entries
 
@@ -129,7 +147,7 @@ def _triage_chunk(
         for n in missing:
             found[n] = {
                 "name": n,
-                "decision": "flag_for_human",
+                "decision": Decision.FLAG_FOR_HUMAN,
                 "justification": "LLM triage gave no usable suggestion; review by hand.",
                 "triage_failed": True,
             }
