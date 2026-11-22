@@ -161,9 +161,11 @@ def triage(
         chunk_key = str(i)
         names = [item["name"] for item in chunk]
         # A checkpointed chunk is reused only if it covers every field, so a partial
-        # one written by an older version of this module is asked about again.
+        # one written by an older version of this module is asked about again. Entries
+        # are keyed by name, so compare against the distinct names: two input rows can
+        # share a name, and both get the same entry.
         saved_entries = _named_entries(checkpoint.get(chunk_key), set(names))
-        if len(saved_entries) == len(names):
+        if len(saved_entries) == len(set(names)):
             entries = [saved_entries[n] for n in names]
         else:
             entries, complete = _triage_chunk(chunk, base_prompt, model_key, i + 1)

@@ -153,3 +153,15 @@ def test_partial_checkpoint_is_asked_again(monkeypatch, tmp_path):
     )
     assert results["b"]["decision"] == "send_to_llm"
     assert len(prompts) == 1
+
+
+def test_checkpoint_with_duplicate_field_names_is_reused(monkeypatch, tmp_path):
+    # vlmd_convert only warns about duplicate names, so two "a" fields can reach triage.
+    checkpoint = tmp_path / "checkpoint.json"
+    write_checkpoint(checkpoint, [entry("a"), entry("a")], names=("a", "a"))
+    prompts = reply_with(monkeypatch, "[]")
+    results = vlmd_description_triage.triage(
+        candidates("a", "a"), "test-model", checkpoint_path=str(checkpoint)
+    )
+    assert results == {"a": entry("a")}
+    assert prompts == []
