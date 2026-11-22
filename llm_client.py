@@ -63,6 +63,11 @@ MODELS = {
 
 DEFAULT_MODEL = "azure-gpt-4.1-mini"
 
+# Every error message for a reply that arrived but had no text (content-filtered,
+# refused, no choices) starts with this, so a caller can tell it apart from a network
+# or credentials error, which a retry won't fix.
+NO_CONTENT_ERROR = "model returned no content"
+
 _azure_client = None
 _anthropic_client = None
 
@@ -132,11 +137,15 @@ def _call_azure(
         else:
             kwargs["max_tokens"] = max_tokens
         resp = c.chat.completions.create(**kwargs)
+        # Some content-filtered replies have no choices at all. Say so, rather than
+        # reporting the IndexError that choices[0] would raise.
+        if not resp.choices:
+            return "", False, f"{NO_CONTENT_ERROR} (no choices)"
         choice = resp.choices[0]
         if choice.message.content is None:
             # A content-filtered or refused reply has no content. Say so, rather
             # than reporting the AttributeError that .strip() on None would raise.
-            return "", False, f"model returned no content (finish_reason={choice.finish_reason})"
+            return "", False, f"{NO_CONTENT_ERROR} (finish_reason={choice.finish_reason})"
         return choice.message.content.strip(), True, ""
     except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes an error result
         return "", False, str(e)
@@ -156,9 +165,12 @@ def _call_anthropic(
         if model_cfg.get("supports_temperature", True):
             kwargs["temperature"] = temperature
         resp = c.messages.create(**kwargs)
-        if not resp.content:
-            return "", False, f"model returned no content (stop_reason={resp.stop_reason})"
-        return resp.content[0].text.strip(), True, ""
+        # The reply can start with a block that isn't text (thinking, tool_use) or
+        # have no blocks at all, so take the first text block.
+        text = next((b.text for b in resp.content if getattr(b, "type", None) == "text"), None)
+        if text is None:
+            return "", False, f"{NO_CONTENT_ERROR} (stop_reason={resp.stop_reason})"
+        return text.strip(), True, ""
     except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes an error result
         return "", False, str(e)
 
