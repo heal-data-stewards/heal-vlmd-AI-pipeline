@@ -9,6 +9,7 @@ import json
 
 import run_pipeline
 import vlmd_description_triage
+from vlmd_description_triage import Decision
 
 
 def lint_record(name):
@@ -25,10 +26,10 @@ def lint_record(name):
 
 def test_review_file_marks_fields_triage_could_not_handle(monkeypatch, tmp_path):
     suggestions = {
-        "a": {"name": "a", "decision": "flag_for_human", "justification": "jargon"},
+        "a": {"name": "a", "decision": Decision.FLAG_FOR_HUMAN, "justification": "jargon"},
         "b": {
             "name": "b",
-            "decision": "flag_for_human",
+            "decision": Decision.FLAG_FOR_HUMAN,
             "justification": "no usable suggestion",
             "triage_failed": True,
         },
