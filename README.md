@@ -317,7 +317,8 @@ buckets using its source-row context:
 - `flag_for_human` — real source content that's just terse/technical jargon (e.g. `"relResdiff1"`); the model won't guess at what it means, a human decides
 
 Triage keeps only reply entries that name a field it asked about. If a reply for a batch of fields doesn't cover every 
-field (it isn't a JSON array, or entries are missing or misnamed), triage asks once more. Fields still without a usable 
+field (it isn't a JSON array, or entries are missing or misnamed), triage asks once more about just the fields it 
+missed, allowing a longer reply in case the first was cut off. Fields still without a usable 
 suggestion are flagged `flag_for_human` with `"triage_failed": true` in the review file, and triage prints a warning 
 instead of stopping the pipeline. That batch isn't checkpointed, so a re-run asks the LLM about it again.
 

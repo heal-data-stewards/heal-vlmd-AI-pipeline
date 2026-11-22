@@ -123,6 +123,38 @@ def test_retry_fills_gaps_in_a_partial_reply(monkeypatch):
     assert results == {"a": entry("a", "send_to_llm"), "b": entry("b")}
 
 
+def test_retry_asks_only_about_missing_fields(monkeypatch):
+    prompts = reply_with(monkeypatch, json.dumps([entry("a")]), json.dumps([entry("b")]))
+    vlmd_description_triage.triage(candidates("a", "b"), "test-model")
+    assert '"name": "a"' in prompts[0] and '"name": "b"' in prompts[0]
+    assert '"name": "a"' not in prompts[1] and '"name": "b"' in prompts[1]
+
+
+def test_retry_does_not_replace_entries_from_the_first_reply(monkeypatch):
+    # "maybe" would become flag_for_human and replace the valid send_to_llm.
+    reply_with(
+        monkeypatch,
+        json.dumps([entry("a", "send_to_llm")]),
+        json.dumps([entry("a", "maybe"), entry("b")]),
+    )
+    results = vlmd_description_triage.triage(candidates("a", "b"), "test-model")
+    assert results == {"a": entry("a", "send_to_llm"), "b": entry("b")}
+
+
+def test_retry_allows_a_longer_reply(monkeypatch):
+    # A reply cut off at the token limit isn't valid JSON; the same limit would cut
+    # off the retry too.
+    limits = []
+
+    def fake_call_llm(system, user, max_tokens, **kwargs):
+        limits.append(max_tokens)
+        return ('[{"name": "a", "decision": "leave_as_is", "justi', True, "")
+
+    monkeypatch.setattr(vlmd_description_triage, "call_llm", fake_call_llm)
+    vlmd_description_triage.triage(candidates("a"), "test-model")
+    assert limits[1] > limits[0]
+
+
 # --- Checkpoints ---
 # A complete checkpointed chunk is reused without an LLM call; a partial one
 # (as an older version of triage could write) is asked about again.

@@ -18,12 +18,16 @@ from llm_client import call_llm, parse_json_response
 
 MAX_ROWS_PER_CHUNK = 40
 MAX_TOKENS_OUT = 4096
+# The retry gets more room, since a reply cut off at MAX_TOKENS_OUT isn't valid JSON and
+# the same limit would cut off the retry too. vlmd_fixup uses 8192 with every model in
+# llm_client.MODELS, so it's within all their output limits.
+RETRY_MAX_TOKENS_OUT = 8192
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 VALID_DECISIONS = ("send_to_llm", "leave_as_is", "flag_for_human")
 RETRY_REMINDER = (
-    "\n\nIMPORTANT: The previous response could not be used. Return ONLY a valid JSON "
-    "array with exactly one object per field above, each with the field's exact "
-    '"name", a "decision" and a "justification". No prose or code fences.'
+    "\n\nIMPORTANT: The previous response gave no usable answer for these fields. "
+    "Return ONLY a valid JSON array with exactly one object per field above, each with "
+    'the field\'s exact "name", a "decision" and a "justification". No prose or code fences.'
 )
 
 SYSTEM_PROMPT = (
@@ -71,8 +75,13 @@ def _named_entries(parsed: object, names: set[str]) -> dict[str, dict]:
     return entries
 
 
-def _ask(user_msg: str, names: set[str], model_key: str) -> dict[str, dict]:
-    raw, ok, err = call_llm(SYSTEM_PROMPT, user_msg, model_key=model_key, max_tokens=MAX_TOKENS_OUT)
+def _ask(
+    items: list[dict], base_prompt: str, model_key: str, max_tokens: int, reminder: str = ""
+) -> dict[str, dict]:
+    """Ask the LLM about items; returns the usable entries in its reply, keyed by name."""
+    user_msg = base_prompt + "\n\n" + json.dumps(items, indent=2, ensure_ascii=False) + reminder
+    names = {item["name"] for item in items}
+    raw, ok, err = call_llm(SYSTEM_PROMPT, user_msg, model_key=model_key, max_tokens=max_tokens)
     if not ok:
         print(flush=True)
         raise RuntimeError(f"Triage LLM call failed: {err}")
@@ -88,20 +97,20 @@ def _triage_chunk(
 ) -> tuple[list[dict], bool]:
     """Triage one chunk. Returns (one entry per field in chunk order, complete).
 
-    A reply that doesn't cover every field is retried once with a reminder of the
-    expected shape. Fields still uncovered after that are flagged for a human with
-    "triage_failed": true rather than aborting the run, since a human reviews every
-    suggestion anyway; complete is False then, so the caller doesn't checkpoint the
-    chunk and a re-run asks the LLM again.
+    A reply that doesn't cover every field is retried once, with a reminder of the
+    expected shape and a higher token limit, asking only about the fields it missed:
+    entries from the first reply stand, and the retry has less to write. Fields still
+    uncovered after that are flagged for a human with "triage_failed": true rather
+    than aborting the run, since a human reviews every suggestion anyway; complete is
+    False then, so the caller doesn't checkpoint the chunk and a re-run asks the LLM
+    again.
     """
     names = [item["name"] for item in chunk]
-    wanted = set(names)
-    user_msg = base_prompt + "\n\n" + json.dumps(chunk, indent=2, ensure_ascii=False)
 
-    found = _ask(user_msg, wanted, model_key)
-    if len(found) < len(wanted):
-        # Entries from the first reply are kept; the retry fills gaps and wins on overlap.
-        found.update(_ask(user_msg + RETRY_REMINDER, wanted, model_key))
+    found = _ask(chunk, base_prompt, model_key, MAX_TOKENS_OUT)
+    unanswered = [item for item in chunk if item["name"] not in found]
+    if unanswered:
+        found.update(_ask(unanswered, base_prompt, model_key, RETRY_MAX_TOKENS_OUT, RETRY_REMINDER))
 
     missing = [n for n in names if n not in found]
     if missing:
