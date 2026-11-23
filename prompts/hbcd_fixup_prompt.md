@@ -56,44 +56,15 @@ Use these to infer context when source columns are sparse:
 
 ## Remediation by issue code
 
-### `missing_description`
-Generate a clear, concise description (1–2 sentences) using this process:
-
-1. Parse `name` by splitting on underscores — use the prefix table above to identify domain
-2. Identify the instrument from `source_row.table_label` or `source_row.sub_domain`
-3. Use `source_row.instruction` if present and non-empty (it often contains the original question text)
-4. Use `source_row.domain` and `source_row.sub_domain` for broader context
-5. For scoring/computed variables (suffix `_raw`, `_t`, `_z`, `_pct`, `_sum`), name the scale and score type
-
-Rules:
-- 1–2 sentences, plain English
-- Do not start with "This field", "This variable", or "The variable"
-- Do not repeat the variable name verbatim
-- Do not invent measurement details (ranges, units) that are not in the source row
-
-**Examples:**
-
-| name | source context | good description |
-|------|---------------|-----------------|
-| `ph_ch_anthro_warning_message` | table_label="Anthropometrics", domain="Physical Health" | "Warning message generated during child anthropometric measurement data entry." |
-| `eeg_alpha_power_oz` | table_label="EEG Resting State", sub_domain="Power Spectral Density" | "Alpha band power (8–12 Hz) measured at electrode Oz during resting-state EEG." |
-| `beh_ecbq_surgency_raw` | table_label="ECBQ", domain="Behavior" | "Raw surgency/extraversion score from the Early Childhood Behavior Questionnaire (ECBQ) based on caregiver report." |
-| `vis_001_completion` | table_label="Visit Information" | "Completion status of visit 001." |
-
----
-
-### `description_too_short`
-The description is a known placeholder ("N/A", "See codebook", "TBD", etc.) with no real
-content. Replace it entirely following the same rules as `missing_description`.
-
----
-
-### `encoding_corruption`
-`description` or `title` still contains an unrecoverable replacement character (�) after
-automatic mojibake/smart-quote repair — the original bytes were already lost before this
-pipeline ever saw the file. Write a clean replacement using `table_label`, `domain`,
-`sub_domain`, and the variable name, following the same rules as `missing_description`.
-Do not attempt to guess at or reproduce the corrupted character(s).
+### `missing_description`, `description_too_short`, `encoding_corruption`
+**Never sent to you.** Description text is authoritative source content — this pipeline's
+own code (`vlmd_fixup.py`) strips these three issue codes from every record before it is
+sent to the model, so there is no code path by which you can author or rewrite a
+description. An incomplete, placeholder, or corrupted description is left flagged in the
+lint report for a human to review and fill in (or to decide a deterministic column
+combination is warranted) — it is never guessed at here. If a record you receive somehow
+still carries one of these three codes, treat it as a bug: do not act on it, and do not
+touch that field's `description`/`title`.
 
 ---
 

@@ -13,45 +13,15 @@ Each input record contains:
 
 ## Remediation by issue code
 
-### `missing_description`
-Generate a clear, concise description (1–2 sentences):
-
-1. Split `name` on underscores and camelCase boundaries to derive readable words
-2. Search `source_row` for any column that contains descriptive text
-   (common column names: `label`, `field_label`, `question`, `description`, `title`, `text`)
-3. Use `source_row` section/category/form/domain columns for instrument context
-4. For score/computed variables (suffix `_raw`, `_t`, `_z`, `_pct`, `_sum`), name the scale and score type
-
-Rules:
-- 1–2 sentences, plain English
-- Do not start with "This field", "This variable", or "The variable"
-- Do not repeat the variable name verbatim
-- Do not invent measurement details not present in the source row
-
-**Examples:**
-
-| name | source context | good description |
-|------|---------------|-----------------|
-| `participant_age_months` | domain="Demographics" | "Age of the participant in months at the time of assessment." |
-| `bpi_pain_severity` | label="Pain Severity", domain="Pain Assessment" | "Composite pain severity score from the Brief Pain Inventory (BPI)." |
-| `visit_number` | form="Visit Log" | "Sequential visit number for this participant." |
-| `consent_signed` | type="yesno" | "Indicates whether the participant signed the informed consent form." |
-
----
-
-### `description_too_short`
-The description is a known placeholder ("N/A", "See codebook", "TBD", etc.) with no real
-content. Replace it entirely following the same rules as `missing_description`.
-
----
-
-### `encoding_corruption`
-`description` or `title` still contains an unrecoverable replacement character (�) after
-automatic mojibake/smart-quote repair — the original bytes were already lost before this
-pipeline ever saw the file, so the exact original text cannot be reconstructed character
-for character. Write a clean replacement using whatever the surrounding text and other
-`source_row` columns tell you about intended meaning, following the same rules as
-`missing_description`. Do not attempt to guess at or reproduce the corrupted character(s).
+### `missing_description`, `description_too_short`, `encoding_corruption`
+**Never sent to you.** Description text is authoritative source content — this pipeline's
+own code (`vlmd_fixup.py`) strips these three issue codes from every record before it is
+sent to the model, so there is no code path by which you can author or rewrite a
+description. An incomplete, placeholder, or corrupted description is left flagged in the
+lint report for a human to review and fill in (or to decide a deterministic column
+combination is warranted) — it is never guessed at here. If a record you receive somehow
+still carries one of these three codes, treat it as a bug: do not act on it, and do not
+touch that field's `description`/`title`.
 
 ---
 
