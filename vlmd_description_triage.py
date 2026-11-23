@@ -14,6 +14,7 @@ import time
 from enum import StrEnum
 from pathlib import Path
 
+from chunk_checkpoint import load_checkpoint, save_checkpoint
 from cli_ui import print_progress
 from llm_client import NO_CONTENT_ERROR, call_llm, parse_json_response
 
@@ -177,14 +178,7 @@ def triage(
     ]
 
     fingerprint = "|".join(f"{i['name']}:{i['description']}" for i in items)
-    checkpoint: dict = {}
-    if checkpoint_path and Path(checkpoint_path).exists():
-        try:
-            saved = json.loads(Path(checkpoint_path).read_text(encoding="utf-8"))
-            if saved.get("_fingerprint") == fingerprint:
-                checkpoint = {k: v for k, v in saved.items() if not k.startswith("_")}
-        except (OSError, ValueError, AttributeError):
-            checkpoint = {}
+    checkpoint, _ = load_checkpoint(checkpoint_path, fingerprint)
 
     chunks = [items[i : i + MAX_ROWS_PER_CHUNK] for i in range(0, len(items), MAX_ROWS_PER_CHUNK)]
     results: dict[str, dict] = {}
@@ -204,15 +198,7 @@ def triage(
             entries, complete = _triage_chunk(chunk, base_prompt, model_key, i + 1)
             if complete:
                 checkpoint[chunk_key] = entries
-                if checkpoint_path:
-                    Path(checkpoint_path).write_text(
-                        json.dumps(
-                            {"_fingerprint": fingerprint, **checkpoint},
-                            indent=2,
-                            ensure_ascii=False,
-                        ),
-                        encoding="utf-8",
-                    )
+                save_checkpoint(checkpoint_path, fingerprint, checkpoint)
 
         for entry in entries:
             results[entry["name"]] = entry
