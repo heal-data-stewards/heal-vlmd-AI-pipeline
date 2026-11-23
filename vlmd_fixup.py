@@ -88,7 +88,11 @@ def process_chunk(
                 user_msg + "\n\nIMPORTANT: Previous response could not be parsed. "
                 "Return ONLY a valid JSON array, no prose or code fences."
             )
-            raw2, ok2, err2 = call_llm(system, retry_msg, model_key=model_key, max_tokens=4096)
+            # Same limit as the first call: a reply that doesn't parse was often cut
+            # off at it, and a lower one would cut the retry off sooner.
+            raw2, ok2, err2 = call_llm(
+                system, retry_msg, model_key=model_key, max_tokens=MAX_TOKENS_OUT
+            )
             if not ok2:
                 raise RuntimeError(f"LLM retry failed: {err2}")
             parsed = parse_json_response(raw2)
