@@ -12,6 +12,7 @@ Usage (standalone):
 
 Called automatically by run_pipeline.py when --input ends in .xlsx/.xls.
 """
+
 import argparse
 import csv
 import sys
@@ -41,8 +42,11 @@ def extract(xlsx_path: str, output_csv: str, sheet_name: str | None = None) -> i
     if sheet_name is None:
         if len(sheets) > 1:
             sheet_name = _pick_sheet(sheets)
-            print(f"  Multiple sheets found — auto-selected largest: '{sheet_name}' "
-                  "(pass --sheet to override)", flush=True)
+            print(
+                f"  Multiple sheets found — auto-selected largest: '{sheet_name}' "
+                "(pass --sheet to override)",
+                flush=True,
+            )
         else:
             sheet_name = sheets[0][0]
 
@@ -91,7 +95,9 @@ def main():
     ap = argparse.ArgumentParser(description="Convert one sheet of an Excel workbook to CSV.")
     ap.add_argument("--input", required=True, help="Path to input .xlsx/.xls file")
     ap.add_argument("--output", required=True, help="Path for the output CSV file")
-    ap.add_argument("--sheet", default=None, help="Sheet name (default: auto-pick the largest sheet)")
+    ap.add_argument(
+        "--sheet", default=None, help="Sheet name (default: auto-pick the largest sheet)"
+    )
     args = ap.parse_args()
     sys.exit(extract(args.input, args.output, sheet_name=args.sheet))
 

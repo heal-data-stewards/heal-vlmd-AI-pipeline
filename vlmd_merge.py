@@ -3,6 +3,7 @@
 Generic — works for any format. Stem naming uses appl_id + a configurable
 study label so output files are clearly identified.
 """
+
 import argparse
 import csv
 import json
@@ -55,16 +56,15 @@ def fields_to_csv_rows(fields: list) -> list[dict]:
             "format": f.get("format", ""),
             "constraints.required": (
                 str(f.get("constraints", {}).get("required", "")).lower()
-                if f.get("constraints", {}).get("required") is not None else ""
+                if f.get("constraints", {}).get("required") is not None
+                else ""
             ),
             "constraints.maxLength": _constraint_str(f, "maxLength"),
             "constraints.enum": "|".join(f.get("constraints", {}).get("enum", [])),
             "constraints.pattern": f.get("constraints", {}).get("pattern", ""),
             "constraints.maximum": _constraint_str(f, "maximum"),
             "constraints.minimum": _constraint_str(f, "minimum"),
-            "enumLabels": "|".join(
-                f"{k}={v}" for k, v in (f.get("enumLabels") or {}).items()
-            ),
+            "enumLabels": "|".join(f"{k}={v}" for k, v in (f.get("enumLabels") or {}).items()),
             "enumOrdered": str(f.get("enumOrdered", "")).lower() if "enumOrdered" in f else "",
             "missingValues": "|".join(f.get("missingValues", [])),
             "trueValues": "|".join(f.get("trueValues", [])),
@@ -79,9 +79,7 @@ def fields_to_csv_rows(fields: list) -> list[dict]:
             "relatedConcepts[0].url": (f.get("relatedConcepts") or [{}])[0].get("url", ""),
             "relatedConcepts[0].title": (f.get("relatedConcepts") or [{}])[0].get("title", ""),
             "relatedConcepts[0].source": (f.get("relatedConcepts") or [{}])[0].get("source", ""),
-            "custom": "|".join(
-                f"{k}={v}" for k, v in (f.get("custom") or {}).items()
-            ),
+            "custom": "|".join(f"{k}={v}" for k, v in (f.get("custom") or {}).items()),
         }
         rows.append(row)
     return rows
@@ -90,21 +88,26 @@ def fields_to_csv_rows(fields: list) -> list[dict]:
 # Maps this pipeline's internal format-YAML name to the canonical inputtype
 # vocabulary used by heal-transformers/scripts/convert2vlmd.py's detect_input_type().
 _INPUTTYPE_MAP = {
-    "stata":       "stata",
-    "redcap":      "redcap-csv",
-    "hbcd":        "csv-data-dict",
+    "stata": "stata",
+    "redcap": "redcap-csv",
+    "hbcd": "csv-data-dict",
     "generic-csv": "csv-data-dict",
 }
 
 _GITHUB_DD_BASE = (
-    "https://github.com/heal-data-stewards/heal-data-dictionaries"
-    "/tree/main/data-dictionaries"
+    "https://github.com/heal-data-stewards/heal-data-dictionaries/tree/main/data-dictionaries"
 )
 
 
-def write_metadata_yaml(output_dir: Path, hdp_id: str, appl_id: str,
-                        stem: str, title: str, format_name: str,
-                        input_filename: str | None = None):
+def write_metadata_yaml(
+    output_dir: Path,
+    hdp_id: str,
+    appl_id: str,
+    stem: str,
+    title: str,
+    format_name: str,
+    input_filename: str | None = None,
+):
     input_file = input_filename or f"{stem}.csv"
     inputtype = _INPUTTYPE_MAP.get(format_name, format_name)
     github_base = f"{_GITHUB_DD_BASE}/{hdp_id}" if hdp_id else None
@@ -140,11 +143,14 @@ def write_metadata_yaml(output_dir: Path, hdp_id: str, appl_id: str,
 # extraction, Word-authored REDCap/Qualtrics exports, etc. commonly carry
 # smart quotes and other typographic characters).
 _TEXT_NORMALIZE_MAP = {
-    "‘": "'", "’": "'",   # ' '
-    "“": '"', "”": '"',  # " "
-    "–": "-", "—": "-",  # – —
-    "…": "...",               # …
-    " ": " ",                 # non-breaking space
+    "‘": "'",
+    "’": "'",  # ' '
+    "“": '"',
+    "”": '"',  # " "
+    "–": "-",
+    "—": "-",  # – —
+    "…": "...",  # …
+    " ": " ",  # non-breaking space
 }
 
 
@@ -170,6 +176,7 @@ def normalize_fields(fields: list) -> list:
 def validate_output(vlmd_doc: dict) -> bool:
     try:
         from healdata_utils import validate_vlmd_json
+
         result = validate_vlmd_json(vlmd_doc)
         report = result.get("report", result)
         is_valid = report.get("valid", False)
@@ -188,11 +195,19 @@ def validate_output(vlmd_doc: dict) -> bool:
         return False
 
 
-def merge(converted_path: str, fixes_path: str | None, output_dir: str,
-          hdp_id: str, appl_id: str, title: str,
-          study_label: str, format_name: str, validate: bool,
-          file_stem: str | None = None,
-          input_filename: str | None = None) -> int:
+def merge(
+    converted_path: str,
+    fixes_path: str | None,
+    output_dir: str,
+    hdp_id: str,
+    appl_id: str,
+    title: str,
+    study_label: str,
+    format_name: str,
+    validate: bool,
+    file_stem: str | None = None,
+    input_filename: str | None = None,
+) -> int:
     fields = json.loads(Path(converted_path).read_text(encoding="utf-8"))
     print(f"Loaded {len(fields):,} converted fields", flush=True)
 
@@ -229,9 +244,7 @@ def merge(converted_path: str, fixes_path: str | None, output_dir: str,
         validation_passed = validate_output(vlmd_doc)
 
     json_path = out / f"{stem}.vlmd.json"
-    json_path.write_text(
-        json.dumps(vlmd_doc, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    json_path.write_text(json.dumps(vlmd_doc, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"  JSON → {json_path}", flush=True)
 
     csv_path = out / f"{stem}.vlmd.csv"
@@ -248,11 +261,15 @@ def merge(converted_path: str, fixes_path: str | None, output_dir: str,
 
     if validate and not validation_passed:
         print(
-            bold_red("ERROR: Final VLMD document failed (or could not run) schema validation.",
-                     stream=sys.stderr) + "\n"
+            bold_red(
+                "ERROR: Final VLMD document failed (or could not run) schema validation.",
+                stream=sys.stderr,
+            )
+            + "\n"
             f"       Output written to {out} for inspection.\n"
             "       Fix validation errors before copying to the final repository.",
-            file=sys.stderr, flush=True,
+            file=sys.stderr,
+            flush=True,
         )
         return 2
     return 0
@@ -266,16 +283,27 @@ def main():
     ap.add_argument("--hdp-id", default="")
     ap.add_argument("--appl-id", default="unknown")
     ap.add_argument("--title", default="HEAL Study Data Dictionary")
-    ap.add_argument("--study-label", default="DataDictionary",
-                    help="Short label used in output filename: {appl_id}_{study_label}.vlmd.json")
+    ap.add_argument(
+        "--study-label",
+        default="DataDictionary",
+        help="Short label used in output filename: {appl_id}_{study_label}.vlmd.json",
+    )
     ap.add_argument("--format-name", default="unknown", help="Source format name for metadata")
     ap.add_argument("--validate", action="store_true")
     args = ap.parse_args()
-    sys.exit(merge(
-        args.converted, args.fixes, args.output_dir,
-        args.hdp_id, args.appl_id, args.title,
-        args.study_label, args.format_name, args.validate,
-    ))
+    sys.exit(
+        merge(
+            args.converted,
+            args.fixes,
+            args.output_dir,
+            args.hdp_id,
+            args.appl_id,
+            args.title,
+            args.study_label,
+            args.format_name,
+            args.validate,
+        )
+    )
 
 
 if __name__ == "__main__":

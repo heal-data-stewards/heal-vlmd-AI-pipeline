@@ -7,6 +7,7 @@ Pass 2 — LLM fallback for unknown or ambiguous formats.
 
 Output is a structured dict that both the CLI and the Claude Code skill consume.
 """
+
 import argparse
 import json
 import sys
@@ -19,7 +20,7 @@ from llm_client import DEFAULT_MODEL, call_llm, parse_json_response
 FORMATS_DIR = Path(__file__).parent / "formats"
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 SAMPLE_ROWS = 5
-AMBIGUITY_GAP = 0.20   # top score must beat 2nd by this much to be non-ambiguous
+AMBIGUITY_GAP = 0.20  # top score must beat 2nd by this much to be non-ambiguous
 HIGH_CONFIDENCE = 0.65
 
 
@@ -34,6 +35,7 @@ def _detect_encoding(file_path: str) -> str:
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def load_all_formats(formats_dir: Path = FORMATS_DIR) -> dict[str, dict]:
     """Load all YAML files from formats/ directory. Keys are format_name values."""
@@ -58,6 +60,7 @@ def read_file_preview(file_path: str) -> tuple[list[str], list[dict], int]:
     if p.suffix.lower() == ".dta":
         try:
             import pyreadstat
+
             df, meta = pyreadstat.read_dta(str(p))
             cols = list(df.columns)
             rows = df.head(SAMPLE_ROWS).to_dict(orient="records")
@@ -66,9 +69,16 @@ def read_file_preview(file_path: str) -> tuple[list[str], list[dict], int]:
             raise ImportError("pyreadstat required for Stata files: pip install pyreadstat")
     else:
         import pandas as pd
+
         encoding = _detect_encoding(file_path)
-        df = pd.read_csv(file_path, dtype=str, keep_default_na=False,
-                         low_memory=False, nrows=SAMPLE_ROWS + 1, encoding=encoding)
+        df = pd.read_csv(
+            file_path,
+            dtype=str,
+            keep_default_na=False,
+            low_memory=False,
+            nrows=SAMPLE_ROWS + 1,
+            encoding=encoding,
+        )
         cols = list(df.columns)
         rows = df.head(SAMPLE_ROWS).to_dict(orient="records")
         total = sum(1 for _ in open(file_path, encoding=encoding, errors="replace")) - 1
@@ -103,8 +113,8 @@ def check_extension_match(file_path: str, specs: dict) -> tuple[str, dict] | tup
 
 # ── LLM fallback ─────────────────────────────────────────────────────────────
 
-def llm_detect(columns: list[str], sample_rows: list[dict],
-               model_key: str = DEFAULT_MODEL) -> dict:
+
+def llm_detect(columns: list[str], sample_rows: list[dict], model_key: str = DEFAULT_MODEL) -> dict:
     system = (PROMPTS_DIR / "system_invariants_vlmd.md").read_text(encoding="utf-8")
     prompt_template = (PROMPTS_DIR / "detect_format_prompt.md").read_text(encoding="utf-8")
 
@@ -128,10 +138,13 @@ def llm_detect(columns: list[str], sample_rows: list[dict],
 
 # ── main detection function ───────────────────────────────────────────────────
 
-def detect(file_path: str,
-           formats_dir: str | None = None,
-           model_key: str = DEFAULT_MODEL,
-           llm_fallback: bool = True) -> dict:
+
+def detect(
+    file_path: str,
+    formats_dir: str | None = None,
+    model_key: str = DEFAULT_MODEL,
+    llm_fallback: bool = True,
+) -> dict:
     """
     Returns a result dict:
     {
@@ -251,7 +264,10 @@ def detect(file_path: str,
         llm_result = llm_result[0]
 
     if not isinstance(llm_result, dict):
-        print(f"  WARNING: LLM returned unexpected type {type(llm_result).__name__} — treating as no match", flush=True)
+        print(
+            f"  WARNING: LLM returned unexpected type {type(llm_result).__name__} — treating as no match",
+            flush=True,
+        )
         llm_result = {}
 
     proposed = llm_result.get("proposed_mapping", {})
@@ -287,13 +303,18 @@ def _build_rule_reasoning(name: str, spec: dict, col_set: set, score: float) -> 
     found_supporting = [c for c in supporting if c in col_set]
     parts = []
     if found_strong:
-        parts.append(f"Found {len(found_strong)}/{len(strong)} strong signature columns: {found_strong}")
+        parts.append(
+            f"Found {len(found_strong)}/{len(strong)} strong signature columns: {found_strong}"
+        )
     if found_supporting:
-        parts.append(f"Found {len(found_supporting)}/{len(supporting)} supporting columns: {found_supporting}")
+        parts.append(
+            f"Found {len(found_supporting)}/{len(supporting)} supporting columns: {found_supporting}"
+        )
     return f"{name.upper()} format (score {score:.0%}). " + ". ".join(parts) + "."
 
 
 # ── display helpers (used by skill) ──────────────────────────────────────────
+
 
 def format_detection_message(result: dict, interactive: bool = True) -> str:
     """Human-readable summary of a detection result.
@@ -311,8 +332,7 @@ def format_detection_message(result: dict, interactive: bool = True) -> str:
 
     if fmt and not result.get("ambiguous") and method != "llm":
         lines.append(
-            f"I identified this as **{fmt.upper()} format** "
-            f"({conf:.0%} confident, {method})."
+            f"I identified this as **{fmt.upper()} format** ({conf:.0%} confident, {method})."
         )
         lines.append(f"\n{result['reasoning']}")
         lines.append(f"\n**{result['row_count']:,} rows** · {result['column_count']} columns")
@@ -353,7 +373,9 @@ def format_detection_message(result: dict, interactive: bool = True) -> str:
         for vlmd_prop, src_col in mapping_display:
             if src_col:
                 note = explanations.get(src_col, "")
-                lines.append(f"  - **'{src_col}'** → `{vlmd_prop}`" + (f" ({note})" if note else ""))
+                lines.append(
+                    f"  - **'{src_col}'** → `{vlmd_prop}`" + (f" ({note})" if note else "")
+                )
 
         custom = proposed.get("custom_columns", [])
         if custom:
@@ -376,6 +398,7 @@ def format_detection_message(result: dict, interactive: bool = True) -> str:
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
+
 
 def main():
     ap = argparse.ArgumentParser()

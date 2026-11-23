@@ -8,6 +8,7 @@ Usage:
 
 See README.md or --help for full option list.
 """
+
 import argparse
 import json
 import re
@@ -80,7 +81,10 @@ def _apply_description_review_gate(
         # Scripted/non-interactive use: default to the non-destructive choice
         # rather than spending LLM calls on triage no one will review.
         for r in undecided:
-            decisions[r["name"]] = {"decision": "leave_as_is", "justification": "--yes: not reviewed"}
+            decisions[r["name"]] = {
+                "decision": "leave_as_is",
+                "justification": "--yes: not reviewed",
+            }
         print(
             f"  NOTE: --yes set — defaulting {len(undecided)} short/placeholder "
             "description(s) to 'leave_as_is' (no LLM rewrite, no triage run). Pass "
@@ -94,8 +98,11 @@ def _apply_description_review_gate(
     if undecided:
         from vlmd_description_triage import triage
 
-        print(f"\n  Running LLM triage on {len(undecided)} short/placeholder description(s) "
-              "to suggest which need a rewrite ...", flush=True)
+        print(
+            f"\n  Running LLM triage on {len(undecided)} short/placeholder description(s) "
+            "to suggest which need a rewrite ...",
+            flush=True,
+        )
         triage_checkpoint = str(work_subdir / "vlmd_description_triage.checkpoint.json")
         suggestions = triage(undecided, model, checkpoint_path=triage_checkpoint)
 
@@ -172,7 +179,10 @@ def _apply_description_review_gate(
     )
 
     for r in convert_lint_records:
-        if decisions.get(r["name"], {}).get("decision") == "leave_as_is" and DESCRIPTION_REVIEW_ISSUE in r["issues"]:
+        if (
+            decisions.get(r["name"], {}).get("decision") == "leave_as_is"
+            and DESCRIPTION_REVIEW_ISSUE in r["issues"]
+        ):
             r["issues"] = [i for i in r["issues"] if i != DESCRIPTION_REVIEW_ISSUE]
 
     filtered = [r for r in convert_lint_records if r["issues"]]
@@ -296,18 +306,18 @@ def run(
         detection_path.write_text(
             json.dumps(
                 {k: v for k, v in detection.items() if k != "sample_rows"},
-                indent=2, ensure_ascii=False,
+                indent=2,
+                ensure_ascii=False,
             ),
             encoding="utf-8",
         )
 
         if detection["format_name"] is None:
             print(format_detection_message(detection, interactive=False), flush=True)
-            
+
             mapping_path = work_subdir / "vlmd_proposed_mapping.json"
             mapping_path.write_text(
-                json.dumps(detection.get("proposed_mapping") or {},
-                          indent=2, ensure_ascii=False),
+                json.dumps(detection.get("proposed_mapping") or {}, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
             columns_arg = ",".join(detection.get("columns", []))
@@ -317,7 +327,7 @@ def run(
                 f"  --hdp-id '{hdp_id}' \\\n"
                 f"  --source-file '{Path(input_file).name}' \\\n"
                 f"  --columns '{columns_arg}' \\\n"
-                f"  --mapping-json \"$(cat {mapping_path})\""
+                f'  --mapping-json "$(cat {mapping_path})"'
             )
             rerun_cmd = (
                 f"python run_pipeline.py --input '{input_file}' "
@@ -327,7 +337,8 @@ def run(
                 "unrecognized format — a mapping needs review before conversion",
                 [
                     "Review the proposed mapping (full detection JSON:\n"
-                    + bold(str(detection_path)) + ")",
+                    + bold(str(detection_path))
+                    + ")",
                     "Correct it if needed by editing\n" + bold(str(mapping_path)),
                     "Save the mapping:\n" + bold(save_cmd),
                     "Re-run with:\n" + bold(rerun_cmd),
@@ -365,8 +376,11 @@ def run(
             for issue in rec["issues"]:
                 issue_counts[issue] = issue_counts.get(issue, 0) + 1
         breakdown = ", ".join(f"{n} {issue}" for issue, n in sorted(issue_counts.items()))
-        print(f"\n  {len(convert_lint_records)} field(s) flagged for LLM review "
-              f"({breakdown}) — see {convert_lint_path}", flush=True)
+        print(
+            f"\n  {len(convert_lint_records)} field(s) flagged for LLM review "
+            f"({breakdown}) — see {convert_lint_path}",
+            flush=True,
+        )
 
     # ── Step 3: Validate ──────────────────────────────────────────────────────
     _banner("Step 3: Validate")
@@ -377,18 +391,22 @@ def run(
 
     # ── Step 4: LLM fixup ─────────────────────────────────────────────────────
     # Run if converter flagged any fields OR schema validation found errors
-    needs_fixup = (lint_exit != 0 or bool(convert_lint_records))
+    needs_fixup = lint_exit != 0 or bool(convert_lint_records)
     fixes_path = None
     cleanup_log_path = str(work_subdir / "vlmd_llm_cleanup.json")
 
     if needs_fixup and not skip_llm:
         convert_lint_records, gate_exit = _apply_description_review_gate(
-            convert_lint_records, convert_lint_path, work_subdir,
-            description_review_decisions, yes, model,
+            convert_lint_records,
+            convert_lint_path,
+            work_subdir,
+            description_review_decisions,
+            yes,
+            model,
         )
         if gate_exit is not None:
             return gate_exit
-        needs_fixup = (lint_exit != 0 or bool(convert_lint_records))
+        needs_fixup = lint_exit != 0 or bool(convert_lint_records)
 
     if needs_fixup and not skip_llm:
         _banner(f"Step 4: LLM fixup  (model: {model})")
@@ -516,45 +534,74 @@ Examples:
     )
     ap.add_argument("--input", required=True, help="Path to input data dictionary (CSV or .dta)")
     ap.add_argument("--format", default=None, help="Format YAML path (skips auto-detection)")
-    ap.add_argument("--hdp-id", default="",
-                    help="HEAL Data Platform project ID (e.g. HDP01258)")
-    ap.add_argument("--appl-id", default="unknown",
-                    help="NIH award/application number (auto-fetched if --hdp-id provided)")
-    ap.add_argument("--title", default="HEAL Study Data Dictionary",
-                    help="Study title (auto-fetched if --hdp-id provided)")
-    ap.add_argument("--study-label", default="DataDictionary",
-                    help="Short label for metadata (legacy)")
-    ap.add_argument("--name", default=None,
-                    help="Output filename prefix (default: derived from input filename). "
-                         "Final stem: {hdp-id}_{name}. "
-                         "Example: --name HBCD_datadictionary → HDP01258_HBCD_datadictionary.vlmd.json")
-    ap.add_argument("--model", default="azure-gpt-4.1-mini",
-                    help="LLM model key (default: azure-gpt-4.1-mini)")
-    ap.add_argument("--output-dir", default=str(OUTPUT_DIR),
-                    help="Base output directory. Files go to {output-dir}/vlmd/{stem}/ "
-                         "and {output-dir}/input/. Default: output/{hdp-id}/")
+    ap.add_argument("--hdp-id", default="", help="HEAL Data Platform project ID (e.g. HDP01258)")
+    ap.add_argument(
+        "--appl-id",
+        default="unknown",
+        help="NIH award/application number (auto-fetched if --hdp-id provided)",
+    )
+    ap.add_argument(
+        "--title",
+        default="HEAL Study Data Dictionary",
+        help="Study title (auto-fetched if --hdp-id provided)",
+    )
+    ap.add_argument(
+        "--study-label", default="DataDictionary", help="Short label for metadata (legacy)"
+    )
+    ap.add_argument(
+        "--name",
+        default=None,
+        help="Output filename prefix (default: derived from input filename). "
+        "Final stem: {hdp-id}_{name}. "
+        "Example: --name HBCD_datadictionary → HDP01258_HBCD_datadictionary.vlmd.json",
+    )
+    ap.add_argument(
+        "--model", default="azure-gpt-4.1-mini", help="LLM model key (default: azure-gpt-4.1-mini)"
+    )
+    ap.add_argument(
+        "--output-dir",
+        default=str(OUTPUT_DIR),
+        help="Base output directory. Files go to {output-dir}/vlmd/{stem}/ "
+        "and {output-dir}/input/. Default: output/{hdp-id}/",
+    )
     ap.add_argument("--skip-llm", action="store_true", help="Skip LLM fixup step")
-    ap.add_argument("--no-detect", action="store_true",
-                    help="Skip format detection (requires --format)")
-    ap.add_argument("--no-confirm", action="store_true",
-                    help="Skip the study confirmation prompt (for scripted/non-interactive use)")
-    ap.add_argument("--yes", action="store_true",
-                    help="Non-interactive: auto-decide undecided short/placeholder descriptions "
-                         "as 'leave_as_is' instead of stopping for human review "
-                         "(see --description-review-decisions)")
-    ap.add_argument("--dest-dir", default=None,
-                    help="Root of destination repository (e.g. heal-data-dictionaries/data-dictionaries). "
-                         "Files are copied to {dest-dir}/{hdp-id}/vlmd/{stem}/ and {dest-dir}/{hdp-id}/input/ "
-                         "after validation passes.")
-    ap.add_argument("--description-review-decisions", default=None,
-                    help="Path to a decisions JSON (from a prior run's "
-                         "work/{hdp-id}/vlmd_description_review.json) with each entry's "
-                         "\"decision\" set to send_to_llm or leave_as_is. Without it, a run "
-                         "with undecided short/placeholder descriptions stops and writes "
-                         "that file for review (exit code 3).")
-    ap.add_argument("--sheet", default=None,
-                    help="Sheet name to use for .xlsx/.xls input (default: auto-picks the "
-                         "sheet with the most cells). Only relevant for Excel input.")
+    ap.add_argument(
+        "--no-detect", action="store_true", help="Skip format detection (requires --format)"
+    )
+    ap.add_argument(
+        "--no-confirm",
+        action="store_true",
+        help="Skip the study confirmation prompt (for scripted/non-interactive use)",
+    )
+    ap.add_argument(
+        "--yes",
+        action="store_true",
+        help="Non-interactive: auto-decide undecided short/placeholder descriptions "
+        "as 'leave_as_is' instead of stopping for human review "
+        "(see --description-review-decisions)",
+    )
+    ap.add_argument(
+        "--dest-dir",
+        default=None,
+        help="Root of destination repository (e.g. heal-data-dictionaries/data-dictionaries). "
+        "Files are copied to {dest-dir}/{hdp-id}/vlmd/{stem}/ and {dest-dir}/{hdp-id}/input/ "
+        "after validation passes.",
+    )
+    ap.add_argument(
+        "--description-review-decisions",
+        default=None,
+        help="Path to a decisions JSON (from a prior run's "
+        "work/{hdp-id}/vlmd_description_review.json) with each entry's "
+        '"decision" set to send_to_llm or leave_as_is. Without it, a run '
+        "with undecided short/placeholder descriptions stops and writes "
+        "that file for review (exit code 3).",
+    )
+    ap.add_argument(
+        "--sheet",
+        default=None,
+        help="Sheet name to use for .xlsx/.xls input (default: auto-picks the "
+        "sheet with the most cells). Only relevant for Excel input.",
+    )
 
     args = ap.parse_args()
 
@@ -564,24 +611,26 @@ Examples:
     else:
         output_dir = Path(args.output_dir)
 
-    sys.exit(run(
-        input_file=args.input,
-        format_yaml=args.format,
-        appl_id=args.appl_id,
-        hdp_id=args.hdp_id,
-        title=args.title,
-        study_label=args.study_label,
-        name=args.name,
-        model=args.model,
-        skip_llm=args.skip_llm,
-        no_detect=args.no_detect,
-        output_dir=output_dir,
-        no_confirm=args.no_confirm,
-        yes=args.yes,
-        dest_dir=Path(args.dest_dir) if args.dest_dir else None,
-        description_review_decisions=args.description_review_decisions,
-        sheet=args.sheet,
-    ))
+    sys.exit(
+        run(
+            input_file=args.input,
+            format_yaml=args.format,
+            appl_id=args.appl_id,
+            hdp_id=args.hdp_id,
+            title=args.title,
+            study_label=args.study_label,
+            name=args.name,
+            model=args.model,
+            skip_llm=args.skip_llm,
+            no_detect=args.no_detect,
+            output_dir=output_dir,
+            no_confirm=args.no_confirm,
+            yes=args.yes,
+            dest_dir=Path(args.dest_dir) if args.dest_dir else None,
+            description_review_decisions=args.description_review_decisions,
+            sheet=args.sheet,
+        )
+    )
 
 
 if __name__ == "__main__":
