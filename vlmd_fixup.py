@@ -20,7 +20,6 @@ MAX_ROWS_PER_CHUNK = (
     10  # conservative: wrapper format (field+justification+sources) is ~3x bare fields
 )
 MAX_TOKENS_OUT = 8192
-MAX_RETRIES = 2
 ENCODING = tiktoken.get_encoding("cl100k_base")
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -56,9 +55,8 @@ def load_prompts_from_spec(format_yaml: str | None) -> tuple[str, str]:
     )
 
 
-def process_chunk(
-    system: str, base_prompt: str, chunk: list, model_key: str, attempt: int = 0
-) -> list:
+def process_chunk(system: str, base_prompt: str, chunk: list, model_key: str) -> list:
+    """Fix one chunk. A reply that isn't valid JSON is retried once; a second one raises."""
     user_msg = (
         base_prompt + "\n\nFields to fix:\n" + json.dumps(chunk, indent=2, ensure_ascii=False)
     )
@@ -81,23 +79,23 @@ def process_chunk(
 
     try:
         parsed = parse_json_response(raw)
-    except (json.JSONDecodeError, ValueError) as e:
-        if attempt < MAX_RETRIES:
-            print(f"  JSON parse error (attempt {attempt + 1}): {e} — retrying", flush=True)
-            retry_msg = (
-                user_msg + "\n\nIMPORTANT: Previous response could not be parsed. "
-                "Return ONLY a valid JSON array, no prose or code fences."
-            )
-            # Same limit as the first call: a reply that doesn't parse was often cut
-            # off at it, and a lower one would cut the retry off sooner.
-            raw2, ok2, err2 = call_llm(
-                system, retry_msg, model_key=model_key, max_tokens=MAX_TOKENS_OUT
-            )
-            if not ok2:
-                raise RuntimeError(f"LLM retry failed: {err2}")
+    except ValueError as e:  # json.JSONDecodeError
+        print(f"  JSON parse error: {e} — retrying", flush=True)
+        retry_msg = (
+            user_msg + "\n\nIMPORTANT: Previous response could not be parsed. "
+            "Return ONLY a valid JSON array, no prose or code fences."
+        )
+        # Same limit as the first call: a reply that doesn't parse was often cut
+        # off at it, and a lower one would cut the retry off sooner.
+        raw2, ok2, err2 = call_llm(
+            system, retry_msg, model_key=model_key, max_tokens=MAX_TOKENS_OUT
+        )
+        if not ok2:
+            raise RuntimeError(f"LLM retry failed: {err2}") from e
+        try:
             parsed = parse_json_response(raw2)
-        else:
-            raise RuntimeError(f"JSON parse failed after {MAX_RETRIES} retries: {e}")
+        except ValueError as e2:
+            raise RuntimeError(f"LLM reply still not valid JSON after one retry: {e2}") from e2
 
     if not isinstance(parsed, list):
         # Malformed LLM output is a bad value, not a caller passing the wrong type.

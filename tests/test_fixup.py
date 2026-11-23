@@ -7,6 +7,8 @@ what fixup does with the model's replies, not the prompts.
 
 import json
 
+import pytest
+
 import vlmd_fixup
 
 
@@ -26,3 +28,17 @@ def test_retry_after_unparseable_reply_keeps_the_token_limit(monkeypatch):
 
     assert result == [{"field": {"name": "a"}}]
     assert limits == [vlmd_fixup.MAX_TOKENS_OUT, vlmd_fixup.MAX_TOKENS_OUT]
+
+
+def test_second_unparseable_reply_fails_with_a_clear_error(monkeypatch):
+    calls = []
+
+    def fake_call_llm(system, user, model_key, max_tokens):
+        calls.append(user)
+        return "Sure! Here are the fixes:", True, ""
+
+    monkeypatch.setattr(vlmd_fixup, "call_llm", fake_call_llm)
+
+    with pytest.raises(RuntimeError, match="after one retry"):
+        vlmd_fixup.process_chunk("sys", "prompt", [{"name": "a"}], "test-model")
+    assert len(calls) == 2
