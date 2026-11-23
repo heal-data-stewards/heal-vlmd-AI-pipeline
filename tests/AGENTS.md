@@ -1,6 +1,6 @@
 # tests/AGENTS.md
 
-Guidance for adding and organizing tests. Run them with `pytest` from the repo root. They are offline, need no LLM credentials, and CI runs them on every pull request.
+Guidance for adding and organizing tests. Run them with `pytest` from the repo root. They need no LLM credentials, are offline apart from one download noted below, and CI runs them on every pull request.
 
 ## Where a test goes
 
@@ -22,6 +22,7 @@ Guidance for adding and organizing tests. Run them with `pytest` from the repo r
 
   Grep for `# ---` to list a file's groups. Use comments rather than test classes, so test IDs and `-k` filters stay as they are. A file that tests one function needs no group heading; give it one when a second group arrives.
 - **Never call an LLM.** CI has no credentials. Test the code around an LLM call (prompt building, response parsing) directly, and pass `llm_fallback=False` / `skip_llm=True` to stage functions.
+- **Importing `vlmd_fixup` downloads a file the first time.** It loads `tiktoken`'s `cl100k_base` encoding at import, which fetches about 1.7 MB into tiktoken's cache when that cache is empty, as on a fresh CI runner. Tests that import it therefore need network access on a cold cache; CI has it. Don't import `vlmd_fixup` from a test that doesn't need it.
 
 ## Keeping tests out of the repo
 
