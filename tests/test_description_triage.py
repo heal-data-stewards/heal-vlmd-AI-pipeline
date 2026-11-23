@@ -33,6 +33,42 @@ def entry(name, decision=Decision.LEAVE_AS_IS):
     return {"name": name, "decision": decision, "justification": "ok"}
 
 
+# --- Building prompts and parsing replies ---
+# build_prompt() and parse_reply() on their own, with no LLM call.
+
+
+def test_prompt_lists_the_fields_after_the_base_prompt_and_ends_with_the_reminder():
+    items = [{"name": "a", "description": "é"}]
+    prompt = vlmd_description_triage.build_prompt(items, "Fields to triage:", "\n\nREMINDER")
+    assert prompt.startswith("Fields to triage:\n\n[")
+    assert '"description": "é"' in prompt
+    assert prompt.endswith("]\n\nREMINDER")
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        '[{"name": "a", "decision": "leave_as_is", "justification": "ok"}]',
+        '```json\n[{"name": "a", "decision": "leave_as_is", "justification": "ok"}]\n```',
+    ],
+)
+def test_reply_is_parsed_into_entries_by_name(raw):
+    assert vlmd_description_triage.parse_reply(raw, {"a"}) == {"a": entry("a")}
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["Sure! Here it is:", '{"name": "a"}', '[{"name": "zzz", "decision": "leave_as_is"}]'],
+)
+def test_unusable_reply_parses_to_nothing(raw):
+    assert vlmd_description_triage.parse_reply(raw, {"a"}) == {}
+
+
+def test_parsed_reply_with_unknown_decision_is_flagged_for_human():
+    parsed = vlmd_description_triage.parse_reply('[{"name": "a", "decision": "maybe"}]', {"a"})
+    assert parsed["a"]["decision"] == Decision.FLAG_FOR_HUMAN
+
+
 # --- Well-formed replies ---
 # Valid entries are returned as given; an unknown decision falls back to
 # flag_for_human. A reply covering every field is checkpointed and not retried.

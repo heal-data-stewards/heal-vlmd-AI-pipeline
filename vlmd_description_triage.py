@@ -94,12 +94,29 @@ def _named_entries(parsed: object, names: set[str]) -> dict[str, dict]:
     return entries
 
 
-def _ask(
+def build_prompt(items: list[dict], base_prompt: str, reminder: str = "") -> str:
+    """The user message asking about items: base prompt, the items as JSON, reminder.
+
+    The reminder goes after the JSON: the prompt file ends with "Fields to triage:",
+    and RETRY_REMINDER refers to the fields "above".
+    """
+    return base_prompt + "\n\n" + json.dumps(items, indent=2, ensure_ascii=False) + reminder
+
+
+def parse_reply(raw: str, names: set[str]) -> dict[str, dict]:
+    """The usable entries in an LLM reply, keyed by name; {} if it isn't valid JSON."""
+    try:
+        parsed = parse_json_response(raw)
+    except ValueError:  # json.JSONDecodeError
+        return {}
+    return _named_entries(parsed, names)
+
+
+def _ask_llm(
     items: list[dict], base_prompt: str, model_key: str, max_tokens: int, reminder: str = ""
 ) -> dict[str, dict]:
     """Ask the LLM about items; returns the usable entries in its reply, keyed by name."""
-    user_msg = base_prompt + "\n\n" + json.dumps(items, indent=2, ensure_ascii=False) + reminder
-    names = {item["name"] for item in items}
+    user_msg = build_prompt(items, base_prompt, reminder)
     raw, ok, err = call_llm(SYSTEM_PROMPT, user_msg, model_key=model_key, max_tokens=max_tokens)
     if not ok:
         print(flush=True)
@@ -110,11 +127,7 @@ def _ask(
             print(f"  WARNING: triage reply unusable: {err}", flush=True)
             return {}
         raise RuntimeError(f"Triage LLM call failed: {err}")
-    try:
-        parsed = parse_json_response(raw)
-    except ValueError:  # json.JSONDecodeError
-        return {}
-    return _named_entries(parsed, names)
+    return parse_reply(raw, {item["name"] for item in items})
 
 
 def _triage_chunk(
@@ -132,10 +145,12 @@ def _triage_chunk(
     """
     names = [item["name"] for item in chunk]
 
-    found = _ask(chunk, base_prompt, model_key, MAX_TOKENS_OUT)
+    found = _ask_llm(chunk, base_prompt, model_key, MAX_TOKENS_OUT)
     unanswered = [item for item in chunk if item["name"] not in found]
     if unanswered:
-        found.update(_ask(unanswered, base_prompt, model_key, RETRY_MAX_TOKENS_OUT, RETRY_REMINDER))
+        found.update(
+            _ask_llm(unanswered, base_prompt, model_key, RETRY_MAX_TOKENS_OUT, RETRY_REMINDER)
+        )
 
     missing = [n for n in names if n not in found]
     if missing:
