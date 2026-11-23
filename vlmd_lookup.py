@@ -6,6 +6,7 @@ can confirm they have the right study before conversion begins.
 API:  https://healdata.org/mds/metadata/{hdp_id}
 Docs: https://healdata.org/mds/openapi
 """
+
 import argparse
 import json
 import sys
@@ -21,6 +22,7 @@ HEAL_MDS_BASE = "https://healdata.org/mds/metadata"
 def fetch_study_metadata(hdp_id: str, timeout: int = 10, retries: int = 3) -> dict:
     """Fetch raw metadata JSON from the HEAL platform. Raises RuntimeError on failure."""
     import time
+
     url = f"{HEAL_MDS_BASE}/{hdp_id}"
     last_err = None
     for attempt in range(retries):
@@ -34,17 +36,19 @@ def fetch_study_metadata(hdp_id: str, timeout: int = 10, retries: int = 3) -> di
                     "Check the ID at https://healdata.org/discovery"
                 )
             if e.code in (502, 503, 504) and attempt < retries - 1:
-                wait = 2 ** attempt
-                print(f"  HEAL API returned HTTP {e.code}, retrying in {wait}s ...",
-                      file=sys.stderr, flush=True)
+                wait = 2**attempt
+                print(
+                    f"  HEAL API returned HTTP {e.code}, retrying in {wait}s ...",
+                    file=sys.stderr,
+                    flush=True,
+                )
                 time.sleep(wait)
                 last_err = e
                 continue
             raise RuntimeError(f"HEAL API returned HTTP {e.code} for '{hdp_id}'.")
         except urllib.error.URLError as e:
             raise RuntimeError(
-                f"Could not reach the HEAL platform: {e.reason}. "
-                "Check your network connection."
+                f"Could not reach the HEAL platform: {e.reason}. Check your network connection."
             )
     raise RuntimeError(f"HEAL API unavailable after {retries} attempts: {last_err}")
 
@@ -66,8 +70,7 @@ def extract_study_info(metadata: dict) -> dict:
         "description": (mi.get("study_description") or "")[:250].strip(),
         "investigators": gen3.get("investigators_name") or [],
         "institution": (
-            gen3.get("institutions")
-            or (nih.get("organization") or {}).get("org_name", "")
+            gen3.get("institutions") or (nih.get("organization") or {}).get("org_name", "")
         ),
         "research_program": gen3.get("research_program") or "",
         "research_focus": gen3.get("research_focus_area") or "",
@@ -79,12 +82,13 @@ def extract_study_info(metadata: dict) -> dict:
 def display_study_info(hdp_id: str, info: dict):
     """Print a study summary card to stdout."""
     import textwrap
+
     div = "─" * 60
 
     def row(label: str, value: str):
-        first, *rest = textwrap.wrap(str(value), width=60,
-                                     initial_indent=f"  {label:<14}",
-                                     subsequent_indent=" " * 16)
+        first, *rest = textwrap.wrap(
+            str(value), width=60, initial_indent=f"  {label:<14}", subsequent_indent=" " * 16
+        )
         print(first)
         for line in rest:
             print(line)
@@ -110,8 +114,9 @@ def display_study_info(hdp_id: str, info: dict):
         row("NIH link:", info["nih_reporter_link"])
     if info["description"]:
         print("\n  Description:")
-        for line in textwrap.wrap(info["description"], width=72,
-                                  initial_indent="    ", subsequent_indent="    "):
+        for line in textwrap.wrap(
+            info["description"], width=72, initial_indent="    ", subsequent_indent="    "
+        ):
             print(line)
     print(f"  {div}")
     print()

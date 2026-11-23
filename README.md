@@ -640,6 +640,12 @@ python run_pipeline.py \
 
 ---
 
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setting up a development environment, formatting with Ruff, and what a pull request needs before review.
+
+---
+
 ## Bot / API integration
 
 The pipeline is designed from the start to be driven by a conversational interface. All interaction points produce structured JSON, and all state lives in files — making it straightforward to wrap in an MCP server, Streamlit app, or REST API.
@@ -715,6 +721,34 @@ Run it from the repo root (it serves streamable HTTP at `/mcp`; needs `mcp>=2.0`
 python -m mcp_server.server                      # MCP_SERVER_HOST / MCP_SERVER_PORT, default 0.0.0.0:8090
 python mcp_server/verify.py                      # manual smoke test against a running server (MCP_URL)
 docker build -f mcp_server/Dockerfile .          # build context is the repo root
+```python
+# mcp_server.py (stub — not yet implemented)
+
+
+@mcp.tool()
+def lookup_study(hdp_id: str) -> dict:
+    """Fetch study info from the HEAL platform. Returns appl_id, study_name, investigators."""
+    ...
+
+
+@mcp.tool()
+def detect_format(file_path: str, model: str = "azure-gpt-4.1-mini") -> dict:
+    """Detect the format of a data dictionary file."""
+    ...
+
+
+@mcp.tool()
+def save_format_mapping(applid: str, mapping: dict, hdp_id: str = "") -> dict:
+    """Save a confirmed column mapping as formats/{applid}.yaml for future reuse."""
+    ...
+
+
+@mcp.tool()
+def run_conversion(
+    file_path: str, format_yaml: str, appl_id: str, hdp_id: str = "", dest_dir: str = ""
+) -> dict:
+    """Run the full conversion pipeline. Returns output file paths and validation status."""
+    ...
 ```
 
 File paths are resolved on the server's filesystem, so in a container callers must pass paths under the volume they share with it. LLM tools read credentials from the server's `.env` or environment.
@@ -727,6 +761,7 @@ Because the pipeline is pure Python, the cleanest integration is a direct import
 
 ```python
 import sys
+
 sys.path.insert(0, "/path/to/heal-vlmd-AI-pipeline")
 
 from vlmd_lookup import lookup, confirm_study
@@ -751,8 +786,8 @@ exit_code = run(
     model="azure-gpt-4.1-mini",
     skip_llm=False,
     no_detect=True,
-    no_confirm=True,                   # skip the study confirmation prompt
-    yes=True,                          # never stop for description review
+    no_confirm=True,  # skip the study confirmation prompt
+    yes=True,  # never stop for description review
     output_dir=Path("output"),
     dest_dir=Path("/path/to/CleanedDataDictionaries"),
 )
@@ -767,10 +802,14 @@ heal-vlmd-AI-pipeline/
 │
 ├── README.md                    This file
 ├── AGENTS.md                    Orientation for AI coding agents: commands and architecture
+├── CONTRIBUTING.md              Development setup and what a pull request needs before review
 ├── NDAR_CONVERSION_NOTES.md     Design notes for a future NDAR converter (nothing implemented yet)
 ├── requirements.txt             Python dependencies
+├── requirements-dev.txt         requirements.txt + pinned Ruff
+├── ruff.toml                    Ruff config
 ├── .env.template                Copy to .env and fill in API keys
 ├── .gitignore
+├── .git-blame-ignore-revs       Bulk reformat commits for git blame to skip
 │
 ├── run_pipeline.py              One-command orchestrator (pure Python)
 ├── chat_pipeline.py             Conversational prototype: same stages as a resumable generator

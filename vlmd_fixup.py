@@ -3,6 +3,7 @@
 Reads prompt paths from the format YAML so each format can have its own
 context-specific fixup instructions. Falls back to generic_fixup_prompt.md.
 """
+
 import argparse
 import json
 import sys
@@ -15,7 +16,9 @@ import yaml
 from cli_ui import print_progress
 from llm_client import DEFAULT_MODEL, MODELS, call_llm, parse_json_response
 
-MAX_ROWS_PER_CHUNK = 10   # conservative: wrapper format (field+justification+sources) is ~3x bare fields
+MAX_ROWS_PER_CHUNK = (
+    10  # conservative: wrapper format (field+justification+sources) is ~3x bare fields
+)
 MAX_TOKENS_OUT = 8192
 MAX_RETRIES = 2
 ENCODING = tiktoken.get_encoding("cl100k_base")
@@ -53,17 +56,23 @@ def load_prompts_from_spec(format_yaml: str | None) -> tuple[str, str]:
     )
 
 
-def process_chunk(system: str, base_prompt: str, chunk: list,
-                  model_key: str, attempt: int = 0) -> list:
-    user_msg = base_prompt + "\n\nFields to fix:\n" + json.dumps(chunk, indent=2, ensure_ascii=False)
+def process_chunk(
+    system: str, base_prompt: str, chunk: list, model_key: str, attempt: int = 0
+) -> list:
+    user_msg = (
+        base_prompt + "\n\nFields to fix:\n" + json.dumps(chunk, indent=2, ensure_ascii=False)
+    )
 
     # Warn if input is large enough that output might still overflow
     input_tokens = count_tokens(system + user_msg)
     est_output = len(chunk) * OUTPUT_OVERHEAD_PER_RECORD + input_tokens // 2
     if est_output > MAX_TOKENS_OUT * 0.85:
-        print(f"  WARNING: chunk may be near token limit "
-              f"(~{est_output} est. output tokens, limit {MAX_TOKENS_OUT}). "
-              "Consider reducing MAX_ROWS_PER_CHUNK.", flush=True)
+        print(
+            f"  WARNING: chunk may be near token limit "
+            f"(~{est_output} est. output tokens, limit {MAX_TOKENS_OUT}). "
+            "Consider reducing MAX_ROWS_PER_CHUNK.",
+            flush=True,
+        )
 
     raw, ok, err = call_llm(system, user_msg, model_key=model_key, max_tokens=MAX_TOKENS_OUT)
 
@@ -76,8 +85,7 @@ def process_chunk(system: str, base_prompt: str, chunk: list,
         if attempt < MAX_RETRIES:
             print(f"  JSON parse error (attempt {attempt + 1}): {e} — retrying", flush=True)
             retry_msg = (
-                user_msg
-                + "\n\nIMPORTANT: Previous response could not be parsed. "
+                user_msg + "\n\nIMPORTANT: Previous response could not be parsed. "
                 "Return ONLY a valid JSON array, no prose or code fences."
             )
             raw2, ok2, err2 = call_llm(system, retry_msg, model_key=model_key, max_tokens=4096)
@@ -126,17 +134,25 @@ def allowed_context_columns(format_yaml: str | None) -> set[str] | None:
             cols.update(v["combine"])
         elif isinstance(v, list):
             cols.update(c for c in v if c)
-    for section, key in (("type_mapping", "source_column"), ("levels", "source_column"),
-                         ("section", "primary_column")):
+    for section, key in (
+        ("type_mapping", "source_column"),
+        ("levels", "source_column"),
+        ("section", "primary_column"),
+    ):
         v = (spec.get(section) or {}).get(key)
         if v:
             cols.add(v)
     return cols
 
 
-def fixup(lint_path: str, output_path: str, checkpoint_path: str,
-          format_yaml: str | None, model_key: str,
-          cleanup_log_path: str | None = None) -> int:
+def fixup(
+    lint_path: str,
+    output_path: str,
+    checkpoint_path: str,
+    format_yaml: str | None,
+    model_key: str,
+    cleanup_log_path: str | None = None,
+) -> int:
     lint_records = json.loads(Path(lint_path).read_text(encoding="utf-8"))
     if not lint_records:
         print("No lint records to fix.", flush=True)
@@ -148,8 +164,11 @@ def fixup(lint_path: str, output_path: str, checkpoint_path: str,
         {
             "name": rec["name"],
             "issues": rec["issues"],
-            "source_row": {k: v for k, v in (rec.get("source_row") or rec.get("hbcd_row", {})).items()
-                           if allowed_cols is None or k in allowed_cols},
+            "source_row": {
+                k: v
+                for k, v in (rec.get("source_row") or rec.get("hbcd_row", {})).items()
+                if allowed_cols is None or k in allowed_cols
+            },
             "vlmd_field_draft": rec["vlmd_field_draft"],
         }
         for rec in lint_records
@@ -182,8 +201,10 @@ def fixup(lint_path: str, output_path: str, checkpoint_path: str,
         except Exception:
             checkpoint = {}
 
-    chunks = [items_for_llm[i: i + MAX_ROWS_PER_CHUNK]
-               for i in range(0, len(items_for_llm), MAX_ROWS_PER_CHUNK)]
+    chunks = [
+        items_for_llm[i : i + MAX_ROWS_PER_CHUNK]
+        for i in range(0, len(items_for_llm), MAX_ROWS_PER_CHUNK)
+    ]
 
     # all_wrapped: list of {field, justification, sources} dicts
     all_wrapped = []
@@ -203,8 +224,9 @@ def fixup(lint_path: str, output_path: str, checkpoint_path: str,
 
         checkpoint[chunk_key] = wrapped
         Path(checkpoint_path).write_text(
-            json.dumps({"_fingerprint": input_fingerprint, **checkpoint},
-                       indent=2, ensure_ascii=False),
+            json.dumps(
+                {"_fingerprint": input_fingerprint, **checkpoint}, indent=2, ensure_ascii=False
+            ),
             encoding="utf-8",
         )
         all_wrapped.extend(wrapped)
@@ -222,8 +244,11 @@ def fixup(lint_path: str, output_path: str, checkpoint_path: str,
         if justification:
             print(f"    Justification: {justification}", flush=True)
     if len(all_wrapped) > preview_limit:
-        print(f"  ... and {len(all_wrapped) - preview_limit} more "
-              f"(full reasoning in the cleanup log)", flush=True)
+        print(
+            f"  ... and {len(all_wrapped) - preview_limit} more "
+            f"(full reasoning in the cleanup log)",
+            flush=True,
+        )
 
     # Extract bare VLMD fields for the merge step
     all_fixed = [item["field"] for item in all_wrapped]
@@ -241,19 +266,18 @@ def fixup(lint_path: str, output_path: str, checkpoint_path: str,
             name = fixed_field.get("name")
             original = by_name.get(name, {})
             before = original.get("vlmd_field_draft", {})
-            cleanup_log.append({
-                "name": name,
-                "model": model_key,
-                "issues": original.get("issues", []),
-                "justification": item.get("justification", ""),
-                "sources": item.get("sources", []),
-                "before": before,
-                "after": fixed_field,
-                "changed_keys": [
-                    k for k in fixed_field
-                    if fixed_field.get(k) != before.get(k)
-                ],
-            })
+            cleanup_log.append(
+                {
+                    "name": name,
+                    "model": model_key,
+                    "issues": original.get("issues", []),
+                    "justification": item.get("justification", ""),
+                    "sources": item.get("sources", []),
+                    "before": before,
+                    "after": fixed_field,
+                    "changed_keys": [k for k in fixed_field if fixed_field.get(k) != before.get(k)],
+                }
+            )
         Path(cleanup_log_path).write_text(
             json.dumps(cleanup_log, indent=2, ensure_ascii=False), encoding="utf-8"
         )

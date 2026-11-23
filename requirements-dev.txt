@@ -1,0 +1,3 @@
+-r requirements.txt
+# Pinned: Ruff's formatting changes between releases. See CONTRIBUTING.md before bumping.
+ruff==0.17.0
