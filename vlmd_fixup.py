@@ -13,6 +13,7 @@ from pathlib import Path
 import tiktoken
 import yaml
 
+from chunk_checkpoint import load_checkpoint, save_checkpoint
 from cli_ui import print_progress
 from llm_client import DEFAULT_MODEL, MODELS, call_llm, parse_json_response
 
@@ -185,22 +186,15 @@ def fixup(
         f"{item['name']}:{','.join(item['issues'])}" for item in items_for_llm
     )
 
-    # Load checkpoint — invalidate if the flagged field list changed
-    checkpoint = {}
-    if Path(checkpoint_path).exists():
-        try:
-            saved = json.loads(Path(checkpoint_path).read_text(encoding="utf-8"))
-            if saved.get("_fingerprint") == input_fingerprint:
-                checkpoint = {k: v for k, v in saved.items() if not k.startswith("_")}
-                print(f"  Resuming from checkpoint ({len(checkpoint)} chunks done)", flush=True)
-            else:
-                print(
-                    "  Checkpoint invalidated — flagged fields changed since last run. "
-                    "Starting fresh.",
-                    flush=True,
-                )
-        except (OSError, ValueError, AttributeError):
-            checkpoint = {}
+    # Load checkpoint — invalidated if the flagged field list changed
+    checkpoint, stale = load_checkpoint(checkpoint_path, input_fingerprint)
+    if checkpoint:
+        print(f"  Resuming from checkpoint ({len(checkpoint)} chunks done)", flush=True)
+    elif stale:
+        print(
+            "  Checkpoint invalidated — flagged fields changed since last run. Starting fresh.",
+            flush=True,
+        )
 
     chunks = [
         items_for_llm[i : i + MAX_ROWS_PER_CHUNK]
@@ -225,12 +219,7 @@ def fixup(
             return 1
 
         checkpoint[chunk_key] = wrapped
-        Path(checkpoint_path).write_text(
-            json.dumps(
-                {"_fingerprint": input_fingerprint, **checkpoint}, indent=2, ensure_ascii=False
-            ),
-            encoding="utf-8",
-        )
+        save_checkpoint(checkpoint_path, input_fingerprint, checkpoint)
         all_wrapped.extend(wrapped)
         print_progress(i + 1, len(chunks), time.time() - t_start, label="Fixup")
     print(flush=True)

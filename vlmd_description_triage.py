@@ -14,6 +14,7 @@ import time
 from enum import StrEnum
 from pathlib import Path
 
+from chunk_checkpoint import load_checkpoint, save_checkpoint
 from cli_ui import print_progress
 from llm_client import NO_CONTENT_ERROR, call_llm, parse_json_response
 
@@ -93,12 +94,29 @@ def _named_entries(parsed: object, names: set[str]) -> dict[str, dict]:
     return entries
 
 
-def _ask(
+def build_prompt(items: list[dict], base_prompt: str, reminder: str = "") -> str:
+    """The user message asking about items: base prompt, the items as JSON, reminder.
+
+    The reminder goes after the JSON: the prompt file ends with "Fields to triage:",
+    and RETRY_REMINDER refers to the fields "above".
+    """
+    return base_prompt + "\n\n" + json.dumps(items, indent=2, ensure_ascii=False) + reminder
+
+
+def parse_reply(raw: str, names: set[str]) -> dict[str, dict]:
+    """The usable entries in an LLM reply, keyed by name; {} if it isn't valid JSON."""
+    try:
+        parsed = parse_json_response(raw)
+    except ValueError:  # json.JSONDecodeError
+        return {}
+    return _named_entries(parsed, names)
+
+
+def _ask_llm(
     items: list[dict], base_prompt: str, model_key: str, max_tokens: int, reminder: str = ""
 ) -> dict[str, dict]:
     """Ask the LLM about items; returns the usable entries in its reply, keyed by name."""
-    user_msg = base_prompt + "\n\n" + json.dumps(items, indent=2, ensure_ascii=False) + reminder
-    names = {item["name"] for item in items}
+    user_msg = build_prompt(items, base_prompt, reminder)
     raw, ok, err = call_llm(SYSTEM_PROMPT, user_msg, model_key=model_key, max_tokens=max_tokens)
     if not ok:
         print(flush=True)
@@ -109,11 +127,7 @@ def _ask(
             print(f"  WARNING: triage reply unusable: {err}", flush=True)
             return {}
         raise RuntimeError(f"Triage LLM call failed: {err}")
-    try:
-        parsed = parse_json_response(raw)
-    except ValueError:  # json.JSONDecodeError
-        return {}
-    return _named_entries(parsed, names)
+    return parse_reply(raw, {item["name"] for item in items})
 
 
 def _triage_chunk(
@@ -131,10 +145,12 @@ def _triage_chunk(
     """
     names = [item["name"] for item in chunk]
 
-    found = _ask(chunk, base_prompt, model_key, MAX_TOKENS_OUT)
+    found = _ask_llm(chunk, base_prompt, model_key, MAX_TOKENS_OUT)
     unanswered = [item for item in chunk if item["name"] not in found]
     if unanswered:
-        found.update(_ask(unanswered, base_prompt, model_key, RETRY_MAX_TOKENS_OUT, RETRY_REMINDER))
+        found.update(
+            _ask_llm(unanswered, base_prompt, model_key, RETRY_MAX_TOKENS_OUT, RETRY_REMINDER)
+        )
 
     missing = [n for n in names if n not in found]
     if missing:
@@ -177,14 +193,7 @@ def triage(
     ]
 
     fingerprint = "|".join(f"{i['name']}:{i['description']}" for i in items)
-    checkpoint: dict = {}
-    if checkpoint_path and Path(checkpoint_path).exists():
-        try:
-            saved = json.loads(Path(checkpoint_path).read_text(encoding="utf-8"))
-            if saved.get("_fingerprint") == fingerprint:
-                checkpoint = {k: v for k, v in saved.items() if not k.startswith("_")}
-        except (OSError, ValueError, AttributeError):
-            checkpoint = {}
+    checkpoint, _ = load_checkpoint(checkpoint_path, fingerprint)
 
     chunks = [items[i : i + MAX_ROWS_PER_CHUNK] for i in range(0, len(items), MAX_ROWS_PER_CHUNK)]
     results: dict[str, dict] = {}
@@ -204,15 +213,7 @@ def triage(
             entries, complete = _triage_chunk(chunk, base_prompt, model_key, i + 1)
             if complete:
                 checkpoint[chunk_key] = entries
-                if checkpoint_path:
-                    Path(checkpoint_path).write_text(
-                        json.dumps(
-                            {"_fingerprint": fingerprint, **checkpoint},
-                            indent=2,
-                            ensure_ascii=False,
-                        ),
-                        encoding="utf-8",
-                    )
+                save_checkpoint(checkpoint_path, fingerprint, checkpoint)
 
         for entry in entries:
             results[entry["name"]] = entry

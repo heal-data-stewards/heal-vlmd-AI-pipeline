@@ -811,6 +811,7 @@ heal-vlmd-AI-pipeline/
 ├── vlmd_description_triage.py   LLM triage for short/placeholder descriptions (proposes, doesn't decide)
 ├── vlmd_merge.py                Write VLMD JSON + CSV + metadata.yaml; gates copy on validation
 ├── llm_client.py                Azure / Anthropic model registry
+├── chunk_checkpoint.py          Per-chunk checkpoints for fixup and triage, so a re-run resumes
 ├── cli_ui.py                    Shared terminal styling: progress bars, ACTION REQUIRED blocks
 ├── probe_azure.py               Diagnostic: tries endpoint shapes and deployment names from .env
 │
