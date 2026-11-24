@@ -55,6 +55,10 @@ There is no test suite. `examples/run_examples.py` runs `--skip-llm --no-detect`
 
 **Output layout** mirrors the `heal-data-dictionaries` repo convention: `output/{hdp-id}/vlmd/{hdp-id}_{name}/{hdp-id}_{name}.vlmd.{json,csv}` plus `metadata.yaml`, and `output/{hdp-id}/input/` holds a copy of the input, which for PDF and Excel inputs is the intermediate extracted CSV rather than the original file. Without `--hdp-id`, the prefix and the `{hdp-id}` directory are dropped: `output/vlmd/{name}/{name}.vlmd.{json,csv}` and `output/input/`, and `--dest-dir` is skipped. `--output-dir` replaces `output/{hdp-id}/` as the base. `vlmd_merge` validates before returning, and `run_pipeline` copies to `--dest-dir` only when that check passes.
 
+## Workflow
+
+`DEVELOPMENT.md` is the process: every change starts from an issue on the project board, lives on a `type/issue-N-slug` branch, and goes to `main` in a pull request whose description says `Closes #N`. Its "Working with AI agents" section applies to you: pick up only `agent-ready` issues, open a draft pull request early, and never push to `main`, approve, merge or change repository settings.
+
 ## Documentation
 
 `CONTRIBUTING.md` lists what a pull request needs before review (Ruff, the examples, README updates); keep it in sync with the commands above. `README.md` is the user manual and should stay in sync with CLI flags, format YAML anatomy, `levels.format` values, the models table, and exit codes. When changing any of those, update the README in the same change.

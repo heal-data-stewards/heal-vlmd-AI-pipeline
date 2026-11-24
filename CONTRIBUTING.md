@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve the VLMD conversion pipeline. This file covers how to set up a development environment and what a pull request needs before it is ready for review. For what the pipeline does and how to use it, see the [README](README.md); for how the code is put together, see the Architecture section of [AGENTS.md](AGENTS.md).
+Thanks for helping improve the VLMD conversion pipeline. This file covers how to set up a development environment and what a pull request needs before it is ready for review. For what the pipeline does and how to use it, see the [README](README.md); for how the code is put together, see the Architecture section of [AGENTS.md](AGENTS.md); for how work moves from an issue to `main` (the project board, branch names, linked issues and merging), see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Setting up
 
@@ -48,8 +48,10 @@ Python 3.11 or later is required. Conversion, detection and validation run witho
 
 ## Pull requests
 
+The workflow around a pull request (an issue on the board first, branch names, `Closes #N`, stacked pull requests, who merges) is in [DEVELOPMENT.md](DEVELOPMENT.md). The rules below are about the pull request itself.
+
 - Keep each pull request to one change, and split it into commits that each make sense on their own; reformatting and behaviour changes belong in separate commits.
 - Write the title as a description of what the change does, e.g. "Detect REDCap exports with renamed columns", since titles become entries in the release notes.
 - Anything a future developer needs to know belongs in the repository (code comments, the README, `AGENTS.md`), not only in the pull request description. That includes approaches that were tried and didn't work, if someone is likely to try them again.
-- Every pull request needs a review from a person before it is merged.
+- Every pull request needs an approval from a person before it is merged, and its description must close an issue (`Closes #N`); the `main` ruleset and the `linked-issue` check enforce both.
 - Pull requests are merged with a merge commit; the repository's settings turn off squash and rebase merging. Keep it that way: a squash or rebase gives every commit a new SHA, so the commits listed in `.git-blame-ignore-revs` wouldn't exist on `main` and `git blame` would silently stop skipping them.
