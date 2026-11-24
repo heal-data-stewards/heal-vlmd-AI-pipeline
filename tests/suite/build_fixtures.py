@@ -15,6 +15,11 @@ local paths, the source hash, the sheet and the row selection.
     python tests/suite/build_fixtures.py list
     python tests/suite/build_fixtures.py rebuild [--case ID]
 
+Redaction: emails, phone numbers and URLs in any cell are always replaced with placeholders,
+and `--redact 'REGEX=>REPLACEMENT'` (repeatable) adds more, e.g. for people's names. The
+patterns are recorded in sources.local.yaml, so `rebuild` applies them again. Check every new
+excerpt for names and contact details by eye as well.
+
 Row selection (all optional, combined, kept in source order; `--first 0` selects nothing):
     --first N         the first N data rows (default 10)
     --rows 3,7,10-12  1-based data-row numbers (the row after the header is 1)
@@ -49,11 +54,35 @@ def _parse_rows(spec: str) -> set[int]:
     return out
 
 
+DEFAULT_REDACTIONS = [
+    (r"[\w.+-]+@[\w-]+\.[\w.-]+", "redacted@example.org"),
+    (r"\(?\b\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b", "000-000-0000"),
+    (r"https?://[^\s\"'<>)]+", "https://example.org/redacted"),
+]
+
+
+def redact(rows: list[list[str]], extra: list[str]) -> list[list[str]]:
+    rules = list(DEFAULT_REDACTIONS)
+    for spec in extra:
+        pattern, sep, repl = spec.partition("=>")
+        if not sep:
+            sys.exit(f"--redact needs REGEX=>REPLACEMENT, got {spec!r}")
+        rules.append((pattern, repl))
+    compiled = [(re.compile(p), r) for p, r in rules]
+
+    def clean(cell: str) -> str:
+        for rx, repl in compiled:
+            cell = rx.sub(repl, cell)
+        return cell
+
+    return [[clean(c) for c in r] for r in rows]
+
+
 def select_rows(rows: list[list[str]], args: dict) -> list[list[str]]:
     """Return preamble + header + the selected data rows of one table (list of string rows)."""
     hdr_i = args.get("header_row", 1) - 1
     if hdr_i >= len(rows):
-        return rows
+        return redact(rows, args.get("redact", []))
     header, body = rows[hdr_i], rows[hdr_i + 1 :]
     keep: set[int] = set(range(1, args.get("first", 10) + 1))
     keep |= _parse_rows(args.get("rows", ""))
@@ -67,7 +96,8 @@ def select_rows(rows: list[list[str]], args: dict) -> list[list[str]]:
             if (any(rx.search(c) for c in r) if idx is None else idx < len(r) and rx.search(r[idx]))
         ]
         keep |= set(hits[: args.get("max_match", 10)])
-    return rows[: hdr_i + 1] + [r for n, r in enumerate(body, 1) if n in keep]
+    picked = rows[: hdr_i + 1] + [r for n, r in enumerate(body, 1) if n in keep]
+    return redact(picked, args.get("redact", []))
 
 
 def _read_text(path: Path) -> tuple[str, str]:
@@ -170,6 +200,8 @@ def cmd_extract(ns) -> int:
         args["match"] = ns.match
     if ns.sheet:
         args["sheets"] = ns.sheet
+    if ns.redact:
+        args["redact"] = ns.redact
     dest = build(ns.case, source, args)
     _record(ns.case, source, args, dest)
     print(f"wrote {dest.relative_to(suite_lib.SUITE_DIR.parent.parent)}")
@@ -213,6 +245,7 @@ def main() -> int:
     ex.add_argument("--rows", default="")
     ex.add_argument("--match", action="append", metavar="COL=REGEX")
     ex.add_argument("--max-match", type=int, default=10)
+    ex.add_argument("--redact", action="append", metavar="REGEX=>REPL")
     ex.add_argument("--header-row", type=int, default=1)
     ex.add_argument("--pages", default="", help="pdf: pages to keep, e.g. 3-5")
     ex.set_defaults(fn=cmd_extract)

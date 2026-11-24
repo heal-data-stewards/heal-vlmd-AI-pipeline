@@ -1,0 +1,13 @@
+﻿Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic (Show field only if...),Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation
+scrid,screener_welcome,,text,Screening ID:,,,integer,,,,,,,,,,
+scrdat,screener_welcome,,text,Date of screen:,,,date_mdy,2019-01-01,,y,,,LV,,,,
+raname,screener_welcome,,text,RA name:,,,,,,,,,LV,,,,
+vas01_blfo,vas_bl_fo,,slider,How much do you want to use [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,
+vas02_blfo,vas_bl_fo,,slider,How much do you want to avoid using [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,
+vas03_blfo,vas_bl_fo,,slider,How much control do you feel you have over using [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,
+vas01,pretdcsmri_vas_craving,,slider,How much do you want to use [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,
+vas02,pretdcsmri_vas_craving,,slider,How much do you want to avoid using [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,
+vas03,pretdcsmri_vas_craving,,slider,How much control do you feel you have over using [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,
+vas01_post,posttdcsmri_vas_craving,,slider,How much do you want to use [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,
+vas02_post,posttdcsmri_vas_craving,,slider,How much do you want to avoid using [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,
+vas03_post,posttdcsmri_vas_craving,,slider,How much control do you feel you have over using [screener_arm_1][primary] right now?,None | Extremely,,number,,,,,,LH,,,,

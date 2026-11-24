@@ -1,0 +1,12 @@
+Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic (Show field only if...),Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation
+record_id,form_1,,text,Record ID,,,,,,,,,,,,,
+time,form_1,,text,time,,,time,,,,,,,,,,
+datetime10,form_1,,text,Date time 10,,,date_mdy,,,,,,,,,,
+dps_1,form_1,,text,Pain Scale 1,,,integer,1,9,,,y,,,,,
+dps_2,form_1,,text,Pain Scale 2 ,,,integer,1,9,,,y,,,,,
+dps,form_1,,calc,Mean Pain Scale,"mean([dps_1],[dps_2])",,,,,,,y,,,,,
+long_text,form_1,,notes,This is long text,,,,,,,,,,,,,
+dec,form_1,,text,Decimal,,,number_2dp,,,,,,,,,,
+datetime22,form_1,,text,Date Time 22?,,,datetime_seconds_dmy,,,,,,,,,,
+slider_eg,form_1,,slider,Slider example,Not confident |  | Very confident,,number,,6,,,,RH,,,,
+slider_mid_eg,form_1,,slider,Slider with middle example,Disagree | Unsure | Agree,,,,6,,,,RH,,,,

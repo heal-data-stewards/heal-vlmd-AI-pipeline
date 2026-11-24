@@ -18,14 +18,14 @@
     Hand-written REDCap dictionary with one of each field type: text with validation, radio,
     yesno, checkbox, calc, three slider label shapes, descriptive with HTML, notes and a
     piped field.
-  covers: [redcap-detect, slider, checkbox, calc, descriptive, yesno, html, piped-fields, count-parity]
+  covers: [redcap-detect, slider, calc, descriptive, html, count-parity]
   xfail:
-    field:age: REDCap Text Validation Min/Max are not mapped to constraints.minimum/maximum
-    field:pain_vas_text: slider labels are parsed as choices and become constraints.enum
-    field:pain_vas_two: slider labels are parsed as choices and become constraints.enum
-    field:pain_vas_anchor: slider labels are parsed as choices and become constraints.enum
-    field:bmi: calc formula is parsed as a choice and becomes constraints.enum
-    field:intro: HTML is left in descriptions
+    field:age: "REDCap Text Validation Min/Max are not mapped to constraints.minimum/maximum"
+    field:pain_vas_text: "slider labels are parsed as choices and become constraints.enum"
+    field:pain_vas_two: "slider labels are parsed as choices and become constraints.enum"
+    field:pain_vas_anchor: "slider labels are parsed as choices and become constraints.enum"
+    field:bmi: "calc formula is parsed as a choice and becomes constraints.enum"
+    field:intro: "HTML is left in descriptions"
   expect:
     format: redcap
     rows_in: 14
@@ -55,3 +55,211 @@
         labels_preserved: [No Pain, Worst Pain]
       bmi: {no_enum: true}
       intro: {no_html: true}
+
+# ---- REDCap excerpts of real dictionaries -------------------------------------------------
+# Slider range: REDCap takes it from Text Validation Min/Max when set and otherwise uses 0-100.
+- id: redcap-slider-minimal
+  fixture: input.csv
+  description: >-
+    A whole small REDCap test project: two sliders (text endpoints with an empty middle label,
+    and three text labels), both with a custom maximum of 6, plus a calc field whose formula
+    contains a comma.
+  covers: [redcap-detect, slider, calc, short-description, count-parity]
+  xfail:
+    field:slider_eg: "slider labels are parsed as choices and become constraints.enum; the slider range (Text Validation Min/Max, else 0-100) is not recorded"
+    field:slider_mid_eg: "slider labels are parsed as choices and become constraints.enum; the slider range (Text Validation Min/Max, else 0-100) is not recorded"
+    field:dps: "calc formula is parsed as pipe-separated choices and lands in constraints.enum (cut at the first comma if it has one)"
+  expect:
+    format: redcap
+    rows_in: 11
+    fields_out: 11
+    schema_valid: true
+    flagged: [time, dec]
+    fields:
+      slider_eg:
+        type: [integer, number]
+        minimum: 0
+        maximum: 6
+        no_enum: true
+        labels_preserved: [Not confident, Very confident]
+      slider_mid_eg:
+        type: [integer, number]
+        minimum: 0
+        maximum: 6
+        no_enum: true
+        labels_preserved: [Disagree, Unsure, Agree]
+      dps: {no_enum: true}
+
+- id: redcap-html-checkbox
+  fixture: input.csv
+  description: >-
+    REDCap survey dictionary with rich-text HTML in descriptive fields, two checkbox fields and
+    two calc formulas (one multi-line with nested if/sum).
+  covers: [redcap-detect, html, calc, descriptive, count-parity]
+  xfail:
+    rows_in: "detect counts physical lines, so cells with line breaks inflate row_count"
+    field:patient_factsheet: "HTML is left in the description"
+    field:question: "HTML is left in the description"
+    field:exclusion_total: "calc formula is parsed as pipe-separated choices and lands in constraints.enum (cut at the first comma if it has one)"
+    field:nrs_total: "calc formula is parsed as pipe-separated choices and lands in constraints.enum (cut at the first comma if it has one)"
+  expect:
+    format: redcap
+    rows_in: 9
+    fields_out: [6, 9]   # the three descriptive rows may be kept or dropped
+    schema_valid: true
+    fields:
+      patient_factsheet: {no_html: true}
+      question: {no_html: true}
+      exclusion_total: {no_enum: true}
+      nrs_total: {no_enum: true}
+
+- id: redcap-slider-formats-a
+  fixture: input.csv
+  description: >-
+    Nine sliders with two endpoint labels (`None | Extremely`) and the show-number flag set,
+    next to a few ordinary fields.
+  covers: [redcap-detect, slider, count-parity]
+  xfail:
+    field:vas01_blfo: "slider labels are parsed as choices and become constraints.enum; the slider range (Text Validation Min/Max, else 0-100) is not recorded"
+    field:vas03_post: "slider labels are parsed as choices and become constraints.enum; the slider range (Text Validation Min/Max, else 0-100) is not recorded"
+  expect:
+    format: redcap
+    rows_in: 12
+    fields_out: 12
+    schema_valid: true
+    fields:
+      vas01_blfo:
+        type: [integer, number]
+        minimum: 0
+        maximum: 100
+        no_enum: true
+        labels_preserved: [None, Extremely]
+      vas03_post:
+        type: [integer, number]
+        minimum: 0
+        maximum: 100
+        no_enum: true
+        labels_preserved: [None, Extremely]
+
+- id: redcap-slider-formats-b
+  fixture: input.csv
+  description: >-
+    Slider labels with numbers embedded (`0 No Pain | 50 | 100 Worst Pain`), and a slider with
+    a custom 1-10 range, plus a calc with a comma-containing formula and two checkbox fields.
+  covers: [redcap-detect, slider, calc, count-parity]
+  xfail:
+    rows_in: "detect counts physical lines, so cells with line breaks inflate row_count"
+    field:dh_vas: "slider labels are parsed as choices and become constraints.enum; the slider range (Text Validation Min/Max, else 0-100) is not recorded"
+    field:ada_smile_feel: "slider labels are parsed as choices and become constraints.enum; the slider range (Text Validation Min/Max, else 0-100) is not recorded"
+    field:age: "calc formula is parsed as pipe-separated choices and lands in constraints.enum (cut at the first comma if it has one)"
+  expect:
+    format: redcap
+    rows_in: 6
+    fields_out: 6
+    schema_valid: true
+    fields:
+      dh_vas:
+        type: [integer, number]
+        minimum: 0
+        maximum: 100
+        no_enum: true
+        labels_preserved: [No Pain, Worst Pain]
+      ada_smile_feel:
+        type: [integer, number]
+        minimum: 1
+        maximum: 10
+        no_enum: true
+        labels_preserved: [Bad, Good]
+      age: {no_enum: true}
+
+- id: redcap-all-types
+  fixture: input.csv
+  description: >-
+    Excerpt with every REDCap field type of a large survey project: notes, dropdown, yesno,
+    checkbox, file uploads, three sliders, calc formulas with piped arguments, and descriptive
+    fields holding HTML (one is an empty div). Cells contain line breaks.
+  covers: [redcap-detect, slider, calc, descriptive, html, short-description, count-parity]
+  xfail:
+    rows_in: "detect counts physical lines, so cells with line breaks inflate row_count"
+    field:mri_vas_pre_i: "slider labels are parsed as choices and become constraints.enum; the slider range (Text Validation Min/Max, else 0-100) is not recorded"
+    field:age: "calc formula is parsed as pipe-separated choices and lands in constraints.enum (cut at the first comma if it has one)"
+    field:paindur: "calc formula is parsed as pipe-separated choices and lands in constraints.enum (cut at the first comma if it has one)"
+    field:econsent_instructions_v5: "HTML is left in the description"
+    field:pipe_consent1_v5: "HTML is left in the description"
+  expect:
+    format: redcap
+    rows_in: 27
+    fields_out: [24, 27]   # the three descriptive rows may be kept or dropped
+    schema_valid: true
+    flagged: [mri_qa_n, mri_qa_1y]
+    fields:
+      mri_vas_pre_i:
+        type: [integer, number]
+        minimum: 0
+        maximum: 100
+        no_enum: true
+        labels_preserved: [No pain sensation, Most intense pain sensation imaginable]
+      age: {no_enum: true}
+      paindur: {no_enum: true}
+      econsent_instructions_v5: {no_html: true}
+      pipe_consent1_v5: {no_html: true}
+
+- id: redcap-empty-descriptions
+  fixture: input.csv
+  description: >-
+    REDCap fields with an empty label, a one-character label that only repeats a number, and
+    calc fields with very short labels. Missing and unusable descriptions must be flagged for
+    review, never filled in.
+  covers: [redcap-detect, empty-description, short-description, calc, count-parity]
+  xfail:
+    field:phq4_sum: "calc formula is parsed as pipe-separated choices and lands in constraints.enum (cut at the first comma if it has one)"
+    field:age: "calc formula is parsed as pipe-separated choices and lands in constraints.enum (cut at the first comma if it has one)"
+  expect:
+    format: redcap
+    rows_in: 15
+    fields_out: 15
+    schema_valid: true
+    flagged: [gender_other, number_sites, number_teeth, mean_cal, mean_pd4, mean_cal1, t_1, t_2, t_3]
+    fields:
+      phq4_sum: {no_enum: true}
+      age: {no_enum: true}
+
+- id: redcap-named-qualtrics
+  fixture: input.xlsx
+  sheet: master
+  description: >-
+    Workbook from a study that calls it a "Qualtrics data dictionary": the master sheet has the
+    REDCap column layout but `Variable Name` instead of `Variable / Field Name`, and `string`
+    as the field type. The format must be decided by the columns, not the file name.
+  covers: [mislabelled-format, redcap-detect, count-parity]
+  xfail:
+    fields_out: "detect picks redcap (score 0.82) but convert fails: the name column is `Variable Name`, not `Variable / Field Name`"
+    schema_valid: "no fields are produced; see fields_out"
+  expect:
+    format: redcap
+    rows_in: 8
+    fields_out: 8
+    schema_valid: true
+
+- id: redcap-messy-workbook
+  fixture: input.xlsx
+  sheet: HDP00429_BACPAC
+  description: >-
+    Workbook with a REDCap-derived dictionary that has only some of the REDCap columns (no
+    `Field Type`, four empty trailing columns), choices written as `1: Male | 2: Female`, plus
+    a comparison sheet, a hidden sheet and a leftover empty sheet. The sheet is pinned because
+    the excerpt changes which sheet is "largest".
+  covers: [redcap-detect, enum-variants, count-parity]
+  xfail:
+    format: "only some REDCap columns are present (no Field Type), the score is below the detection threshold and the format is reported unknown"
+    fields_out: "not converted because the format is not detected"
+    schema_valid: "not converted because the format is not detected"
+    field:SEX: "not converted because the format is not detected"
+  expect:
+    format: redcap
+    rows_in: 8
+    fields_out: 8
+    schema_valid: true
+    fields:
+      SEX:
+        enum_labels: {"1": Male, "2": Female, "3": Unknown, "4": Intersex}

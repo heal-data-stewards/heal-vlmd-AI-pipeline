@@ -35,7 +35,7 @@ def generate() -> str:
     ]
     for c in cases:
         covers = ", ".join(f"`{m}`" for m in c["covers"])
-        desc = " ".join(str(c["description"]).split())
+        desc = " ".join(str(c["description"]).split()).replace("|", "\\|")
         out.append(f"| `{c['id']}/{c['fixture']}` | {covers} | {desc} | {_status(c)} |")
 
     out += ["", "### Failure modes", "", "| Id | Meaning | Fixtures |", "|---|---|---|"]

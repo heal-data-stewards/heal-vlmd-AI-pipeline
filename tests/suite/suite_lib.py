@@ -96,6 +96,10 @@ def check_field(name: str, want: dict, field: dict | None) -> list[str]:
     for text in want.get("labels_preserved", []):
         if text not in blob:
             errs.append(f"field {name!r}: label {text!r} not found anywhere in the field")
+    for value, label in (want.get("enum_labels") or {}).items():
+        got = (field.get("enumLabels") or {}).get(value)
+        if got != label:
+            errs.append(f"field {name!r}: enumLabels[{value!r}] is {got!r}, expected {label!r}")
     if want.get("no_html") and HTML_TAG.search(field.get("description") or ""):
         errs.append(f"field {name!r}: HTML left in description")
     if want.get("description_nonempty") and not (field.get("description") or "").strip():
