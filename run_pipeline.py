@@ -111,7 +111,9 @@ def _apply_description_review_gate(
         # than pre-filled, since there is no confident suggestion to accept or reject.
         scored: list[tuple[int, dict]] = []
         counts = {"flag_for_human": 0, "send_to_llm": 0, "leave_as_is": 0}
+        triage_failed = 0
         for r in candidates:
+            failed = False
             if r["name"] in decisions:
                 d = decisions[r["name"]]
                 suggested = d["decision"]
@@ -121,6 +123,8 @@ def _apply_description_review_gate(
                 suggested = s.get("decision") or "flag_for_human"
                 justification = s.get("justification", "")
                 counts[suggested] = counts.get(suggested, 0) + 1
+                failed = bool(s.get("triage_failed"))
+                triage_failed += failed
             entry = {
                 "name": r["name"],
                 "description": r["vlmd_field_draft"].get("description", ""),
@@ -128,6 +132,10 @@ def _apply_description_review_gate(
                 "decision": "" if suggested == "flag_for_human" else suggested,
                 "justification": justification,
             }
+            if failed:
+                # Machine-readable: tells a field the LLM couldn't triage apart from
+                # one it chose to flag. Loading the decisions file ignores this key.
+                entry["triage_failed"] = True
             scored.append((_SUGGESTION_PRIORITY.get(suggested, 0), entry))
 
         scored.sort(key=lambda pair: pair[0])
@@ -143,6 +151,12 @@ def _apply_description_review_gate(
             f"{counts['leave_as_is']} suggested leave_as_is.",
             flush=True,
         )
+        if triage_failed:
+            print(
+                f"  {triage_failed} of the flagged field(s) got no usable suggestion from "
+                'the LLM (marked "triage_failed": true); a re-run asks about them again.',
+                flush=True,
+            )
 
         rerun_cmd = f"--description-review-decisions {review_path}"
         print_action_required(
