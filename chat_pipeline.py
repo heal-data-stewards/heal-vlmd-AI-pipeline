@@ -268,9 +268,18 @@ def run_conversational(
     # an unconditional "Done!" (it used to be ignored here).
     errors: list[str] = []
     rc = merge(
-        converted_path, fixes_path, str(vlmd_out), hdp_id, appl_id, title,
-        "DataDictionary", format_name, validate=True, file_stem=file_stem,
-        input_filename=Path(input_file).name, errors_out=errors,
+        converted_path,
+        fixes_path,
+        str(vlmd_out),
+        hdp_id,
+        appl_id,
+        title,
+        "DataDictionary",
+        format_name,
+        validate=True,
+        file_stem=file_stem,
+        input_filename=Path(input_file).name,
+        errors_out=errors,
     )
     final_valid = rc == 0
 
