@@ -1,0 +1,238 @@
+"""Shared helpers for the data-dictionary test suite: manifest loading, running a
+fixture through the offline stages (extract -> detect -> convert -> lint), and
+checking the result against a case's `expect` block.
+
+Expectations are properties (format, counts, flagged fields, preserved labels), not
+golden output, so tests don't break when descriptions or field order change.
+"""
+
+import json
+import re
+from pathlib import Path
+
+import yaml
+
+SUITE_DIR = Path(__file__).parent
+MANIFEST = SUITE_DIR / "manifest.yaml"
+FAILURE_MODES = SUITE_DIR / "failure_modes.yaml"
+SOURCES_LOCAL = SUITE_DIR / "sources.local.yaml"
+
+HTML_TAG = re.compile(r"</?[a-zA-Z][^>]*>|&nbsp;|&amp;|&lt;|&gt;")
+
+
+def load_manifest() -> list[dict]:
+    return yaml.safe_load(MANIFEST.read_text(encoding="utf-8")) or []
+
+
+def load_failure_modes() -> dict[str, str]:
+    groups = yaml.safe_load(FAILURE_MODES.read_text(encoding="utf-8"))
+    return {fid: desc for group in groups.values() for fid, desc in group.items()}
+
+
+def fixture_path(case: dict) -> Path:
+    """Fixture file of a case; `fixture_dir` lets several cases share one excerpt (for
+    example one workbook, one case per sheet)."""
+    return SUITE_DIR / "fixtures" / case.get("fixture_dir", case["id"]) / case["fixture"]
+
+
+def run_offline(case: dict, work: Path) -> dict:
+    """Run one fixture through extract -> detect -> convert -> lint without any LLM call.
+
+    Returns a dict with whatever each stage produced; stages after a failed or
+    rejecting stage are absent.
+    """
+    import vlmd_convert
+    import vlmd_detect
+    import vlmd_excel
+    import vlmd_lint
+
+    work.mkdir(parents=True, exist_ok=True)
+    src = fixture_path(case)
+    run: dict = {"input": str(src)}
+
+    if src.suffix.lower() in (".xlsx", ".xls"):
+        extracted = work / "extracted.csv"
+        run["extract_rc"] = vlmd_excel.extract(str(src), str(extracted), case.get("sheet"))
+        if run["extract_rc"] != 0:
+            return run
+        src = extracted
+
+    det = vlmd_detect.detect(str(src), llm_fallback=False)
+    run["detect"] = det
+    if not det.get("format_name") or not det.get("format_yaml_path"):
+        return run
+
+    fields_path, lint_path = work / "fields.json", work / "lint.json"
+    run["convert_rc"] = vlmd_convert.convert(
+        str(src), det["format_yaml_path"], str(fields_path), str(lint_path)
+    )
+    if run["convert_rc"] != 0:
+        return run
+    run["fields"] = json.loads(fields_path.read_text(encoding="utf-8"))
+    run["lint"] = json.loads(lint_path.read_text(encoding="utf-8"))
+    run["lint_rc"] = vlmd_lint.lint(str(fields_path), str(work / "validation.json"), case["id"])
+    return run
+
+
+def run_pipeline_case(case: dict, work: Path, skip_llm: bool) -> dict:
+    """Run one fixture through the whole pipeline (`run_pipeline.run`), LLM steps included
+    unless skip_llm, and return the final VLMD fields.
+
+    Only properties of the final output can be checked this way (no detection result, no
+    lint report). skip_llm=True is how the runner itself is tested without credentials.
+    """
+    import run_pipeline
+
+    work.mkdir(parents=True, exist_ok=True)
+    out = work / "out"
+    saved_work_dir = run_pipeline.WORK_DIR
+    run_pipeline.WORK_DIR = work / "work"  # keep run state out of the repo's work/
+    try:
+        rc = run_pipeline.run(
+            input_file=str(fixture_path(case)),
+            format_yaml=None,
+            appl_id="suite",
+            hdp_id="",
+            title=case["id"],
+            study_label="suite",
+            name=case["id"],
+            skip_llm=skip_llm,
+            no_detect=False,
+            output_dir=out,
+            no_confirm=True,
+            yes=True,
+            sheet=case.get("sheet"),
+        )
+    finally:
+        run_pipeline.WORK_DIR = saved_work_dir
+
+    result: dict = {"pipeline_rc": rc, "lint_rc": rc, "detect": {}}
+    vlmd = out / "vlmd" / case["id"] / f"{case['id']}.vlmd.json"
+    if vlmd.exists():
+        result["fields"] = json.loads(vlmd.read_text(encoding="utf-8"))["fields"]
+    return result
+
+
+def _as_list(v) -> list:
+    return v if isinstance(v, list) else [v]
+
+
+def check_field(name: str, want: dict, field: dict | None) -> list[str]:
+    if field is None:
+        return [f"field {name!r}: missing from output"]
+    errs = []
+    blob = json.dumps(field, ensure_ascii=False)
+    enum = (field.get("constraints") or {}).get("enum")
+    if "type" in want and field.get("type") not in _as_list(want["type"]):
+        errs.append(f"field {name!r}: type {field.get('type')!r}, expected one of {want['type']}")
+    for key in ("minimum", "maximum"):
+        if key in want and (field.get("constraints") or {}).get(key) != want[key]:
+            got = (field.get("constraints") or {}).get(key)
+            errs.append(f"field {name!r}: constraints.{key} is {got!r}, expected {want[key]!r}")
+    if want.get("no_enum") and enum:
+        errs.append(f"field {name!r}: has constraints.enum {enum!r}, expected none")
+    for text in want.get("not_in_enum", []):
+        if enum and any(text in str(v) for v in enum):
+            errs.append(f"field {name!r}: label text {text!r} ended up in constraints.enum")
+    for text in want.get("labels_preserved", []):
+        if text not in blob:
+            errs.append(f"field {name!r}: label {text!r} not found anywhere in the field")
+    for value, label in (want.get("enum_labels") or {}).items():
+        got = (field.get("enumLabels") or {}).get(value)
+        if got != label:
+            errs.append(f"field {name!r}: enumLabels[{value!r}] is {got!r}, expected {label!r}")
+    if want.get("description_empty") and (field.get("description") or "").strip():
+        errs.append(f"field {name!r}: description was filled in: {field['description'][:60]!r}")
+    if want.get("no_required") and (field.get("constraints") or {}).get("required"):
+        errs.append(f"field {name!r}: constraints.required was set")
+    for text in want.get("description_lacks", []):
+        if text in (field.get("description") or ""):
+            errs.append(f"field {name!r}: description contains {text!r}")
+    for text in want.get("absent_text", []):
+        if text in blob:
+            errs.append(f"field {name!r}: contains {text!r}")
+    for key in want.get("custom_lacks", []):
+        if key in (field.get("custom") or {}):
+            errs.append(f"field {name!r}: {key!r} was put in custom instead of being mapped")
+    if want.get("no_html") and HTML_TAG.search(field.get("description") or ""):
+        errs.append(f"field {name!r}: HTML left in description")
+    if want.get("description_nonempty") and not (field.get("description") or "").strip():
+        errs.append(f"field {name!r}: empty description")
+    return errs
+
+
+def check_ids(case: dict) -> list[str]:
+    """One id per assertion in case['expect'], so each can pass, fail or xfail on its own."""
+    want = case.get("expect", {})
+    ids = [
+        k
+        for k in (
+            "format",
+            "rows_in",
+            "columns_include",
+            "fields_out",
+            "names_present",
+            "schema_valid",
+        )
+        if k in want
+    ]
+    ids += [f"flagged:{n}" for n in want.get("flagged", [])]
+    ids += [f"not_flagged:{n}" for n in want.get("not_flagged", [])]
+    ids += [f"field:{n}" for n in (want.get("fields") or {})]
+    return ids
+
+
+def _expected_count(want_value, got) -> bool:
+    return got in want_value if isinstance(want_value, list) else got == want_value
+
+
+def check_one(case: dict, run: dict, check_id: str) -> list[str]:
+    """Evaluate one assertion from check_ids(); return a list of human-readable failures."""
+    want = case["expect"]
+    det = run.get("detect") or {}
+    kind, _, name = check_id.partition(":")
+
+    if kind == "format":
+        got = det.get("format_name")
+        return [] if got == want["format"] else [f"detected {got!r}, expected {want['format']!r}"]
+    if kind == "rows_in":
+        got = det.get("row_count")
+        return (
+            []
+            if _expected_count(want["rows_in"], got)
+            else [f"saw {got} rows, expected {want['rows_in']}"]
+        )
+
+    if kind == "columns_include":
+        missing = [c for c in want["columns_include"] if c not in (det.get("columns") or [])]
+        return (
+            [f"header lacks {missing}; read as {(det.get('columns') or [])[:4]}"] if missing else []
+        )
+
+    fields = run.get("fields")
+    if fields is None:
+        return [f"no fields produced (convert_rc={run.get('convert_rc')})"]
+    if kind == "fields_out":
+        got = len(fields)
+        return (
+            []
+            if _expected_count(want["fields_out"], got)
+            else [f"{got} fields out, expected {want['fields_out']}"]
+        )
+    if kind == "names_present":
+        have = {f.get("name") for f in fields}
+        missing = [n for n in want["names_present"] if n not in have]
+        return [f"names missing from output: {missing}"] if missing else []
+    if kind == "schema_valid":
+        ok = run.get("lint_rc") == 0
+        return [] if ok == want["schema_valid"] else [f"validation rc={run.get('lint_rc')}"]
+
+    flagged = {r["name"] for r in run.get("lint", [])}
+    if kind == "flagged":
+        return [] if name in flagged else [f"{name!r} was not flagged for review"]
+    if kind == "not_flagged":
+        return [f"{name!r} was flagged for review"] if name in flagged else []
+    if kind == "field":
+        by_name = {f["name"]: f for f in fields}
+        return check_field(name, want["fields"][name], by_name.get(name))
+    raise ValueError(f"unknown check id {check_id!r}")

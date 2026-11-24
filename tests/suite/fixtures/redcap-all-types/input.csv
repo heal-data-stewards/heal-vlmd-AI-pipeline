@@ -1,0 +1,42 @@
+Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic (Show field only if...),Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation,,
+sid,participant_tracking_phi_do_not_share,,text,Study ID,,,,,,,,,,,,,,,
+sid_verify,participant_tracking_phi_do_not_share,,text,Please re-enter the Study ID,,SPRINT-XXXX,,,,,,y,,,,,,,
+bpp_osf_id,participant_tracking_phi_do_not_share,,text,BPP OSF 2.0 ID,,Stanford ONLY Tracking Field,,,,,,,,,,,,,
+notes,participant_tracking_phi_do_not_share,,notes,Participant Tracking Notes,,"Please add any general notes about enrollment, data collection, adherence, etc.",,,,y,,,,,,,,,
+age,participant_tracking_phi_do_not_share,,calc,Child Age in Years (Hidden),"rounddown(datediff([baseline_arm_1][con_date], [baseline_arm_1][brthdtc], ""y"", ""mdy""))",Calculated from DOB & Study Enrollment Date,,,,,,,,,,,,,
+status,participant_tracking_phi_do_not_share,,dropdown,Post-Baseline Study Status,"0, In Follow-Up | 1, Complete | 2, Withdrawn | 3, LTFU",,,,,,,,,,,,,,
+econsent_instructions_v5,study_consent_build_in_redcap_v5,,descriptive,"<h3>eConsent Instructions </h3>
+The REDCap eConsent is a template to be used for those who have approval from the IRB to collect the informed consent documentation electronically.
+
+This template is intended to be customized to each study.  Fields that do not apply to the protocol should be removed (deleted).  
+
+Treat each database as a study-specific binder.  Each study should have its own database and should not contain information from another study.   
+
+For more, go to <a href=""https://example.org/redacted"" target=_blank""> eConsent Process Guide</a>. 
+
+*This field can only be viewed in the Online Designer and is not seen in the data entry form or survey.
+",,,,,,,,,,,,,@HIDDEN,,
+pipe_consent1_v5,study_consent_build_in_redcap_v5,,descriptive,"<div class=""rich-text-field-label""><h3>Participant's Name: [name][name_last]<br />Date of Birth: [brthdtc]<br />MRN: [mrn]<br />Study ID: [sid]</h3></div>",,,,,,,,,,,,,@HIDDEN-SURVEY,,
+consent_pg_1_v5,study_consent_build_in_redcap_v5,,descriptive,"<div class=""rich-text-field-label""></div>",,,,,,,,,,,,,,,
+assent_yesno_v5,study_consent_build_in_redcap_v5,,dropdown,"[name] [name_last], do you assent to the study?","1, Yes, I assent to participate in the study. | 0, No, I DO NOT assent to participate in the study.",,autocomplete,,,,,y,,,,,,,
+consent_sign_v5,study_consent_build_in_redcap_v5,,file,"Participant's Signature
+
+By signing this consent form I, [name] [name_last], certify that I agree to participate in this study.",,,signature,,,,,y,,,,,,,
+consent_yesno_v5,study_consent_build_in_redcap_v5,Parental Permission,dropdown,"Do you, [p_name] [p_name_last], consent to the study?","1, Yes, I consent to participate in the study. | 0, No, I DO NOT consent to participate in the study.",,autocomplete,,,,,y,,,,,,,
+parent_sign_v5,study_consent_build_in_redcap_v5,,file,"Parental Permission Signature
+
+By signing this Parental Permission I, [p_name] [p_name_last], certify that [name] [name_last] may participate in this study.",,,signature,,,,,y,,,,,,,
+wit_sign,individual_obtaining_consent,,file,Signature of individual obtaining consent,,,signature,,,,,,,,,,,,
+review_eligibility,electronic_icdf,Consent Process Review,yesno,Reviewed Screener with the participant and verified eligibility prior to consenting?,,,,,,,,,,,,,,,
+process_overview,electronic_icdf,,yesno,"The participant/LAR was given the opportunity to read the consent document, or the consent document was read to them, explaining details of the research study.",,,,,,,,,,,,,,,
+process_questions,electronic_icdf,,yesno,Time was given to the participant/LAR to ask questions and questions were answered by a member of the research team.,,,,,,,,,,,,,,,
+mri_qa_n,data_quality_assurance_qa,,notes,Notes,,,,,,,[mri_qa]='0',,,,,,,,
+mri_qa_1y,data_quality_assurance_qa,,notes,Notes,,,,,,,[mri_qa_1]='1',,,,,,,,
+mri_qa_3,data_quality_assurance_qa,,checkbox,Acquiring the following scans? (skip if none),"1, Localizer | 2, T1 | 3, Resting State #1 | 4, Multisensory Task | 5, Field Map | 6, DWI #1 | 7, Resting State #2 | 8, DWI #2 | 9, T2",,,,,,[mri_qa]='1',,,,,,,,
+psy_qa2,data_quality_assurance_qa,,checkbox,Twice Monthly Survey Completion,"1, Week 2 | 2, Week 4 | 3, Week 6 | 4, Week 8 | 5, Week 10",,,,,,,y,,,,,,,
+mri_vas_pre_i,mri_ratings,,slider,Pain Intensity,No pain sensation |  | Most intense pain sensation imaginable,,,,,,,,LH,,,,,,
+mri_vas_pre_u,mri_ratings,,slider,Pain Unpleasantness,Not at all unpleasant |  | Most unpleasant imaginable,,,,,,,,LH,,,,,,
+mri_vas_post_i,mri_ratings_post_scan,,slider,Pain Intensity,No pain sensation |  | Most intense pain sensation imaginable,,,,,,,,LH,,,,,,
+bpi_7,brief_pain_inventory_short_form_bpisf,,checkbox,"In the last 24 hours, what treatments or medications did you receive for your pain?","1, opioid (e.g. oxycodone, morphine, hydromorphone/Dilaudid, codeine/Tylenol #3 or 4) | 2, acetaminophen/Tylenol | 3, anti-inflammatory (e.g. ibuprofen/ Advil/ Motrin, naproxen/Aleve, Meloxicam) | 99, other | 98, None",,,,,,,,LV,,,,,,
+paindur,child_pain_questionnaire_cpq,,calc,"Months since pain onset (Hidden, CDE question #17)","rounddown(datediff([baseline_arm_1][con_date], [baseline_arm_1][cpq_1], ""M"", ""mdy""))",Calculated from Pain Onset (above) & Study Enrollment Date,,,,,,,,,,,@HIDDEN-SURVEY,,
+ageparent,p_demographics_parent_health_v2_phi_do_not_share,,calc,Parent Age in Years (Hidden),"rounddown(datediff([baseline_arm_1][con_date], [baseline_arm_1][dob_p], ""y"", ""mdy""))",Calculated from DOB & Study Enrollment Date,,,,,,,,,,,@HIDDEN-SURVEY,,

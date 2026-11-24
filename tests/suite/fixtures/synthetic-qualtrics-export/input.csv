@@ -1,0 +1,5 @@
+StartDate,EndDate,Status,Progress,Q1,Q2_1,Q2_2,Q3
+Start Date,End Date,Response Type,Progress,How old are you?,Which do you use? - Tea,Which do you use? - Coffee,Describe your day - Text
+"{""ImportId"":""startDate"",""timeZone"":""America/New_York""}","{""ImportId"":""endDate"",""timeZone"":""America/New_York""}","{""ImportId"":""status""}","{""ImportId"":""progress""}","{""ImportId"":""QID1""}","{""ImportId"":""QID2_1""}","{""ImportId"":""QID2_2""}","{""ImportId"":""QID3_TEXT""}"
+2000-01-01 00:00:00,2000-01-01 00:05:00,0,100,41,1,,test
+2000-01-02 00:00:00,2000-01-02 00:04:00,0,100,29,,1,test

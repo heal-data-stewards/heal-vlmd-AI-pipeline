@@ -1,0 +1,10 @@
+Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic (Show field only if...),Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation
+record_id,survey,,text,Record ID,,,,,,,,,,,,,
+visit_date,survey,,text,Date of visit,,,date_mdy,,,,,,,,,,
+q_tbd,survey,,text,TBD,,,,,,,,,,,,,
+q_na,survey,,text,N/A,,,,,,,,,,,,,
+q_protocol,survey,,text,see protocol,,,,,,,,,,,,,
+q_dot,survey,,text,.,,,,,,,,,,,,,
+q_dash,survey,,text,-,,,,,,,,,,,,,
+q_question,survey,,text,?,,,,,,,,,,,,,
+q_todo,survey,,text,to be added,,,,,,,,,,,,,

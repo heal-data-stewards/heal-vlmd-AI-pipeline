@@ -1,0 +1,4 @@
+attribute,record_id,age,sex,weight
+description,Record ID,Age in years,Sex at birth,Weight in kg
+type,string,integer,string,number
+values,,18-99,1=Female; 2=Male,20-300

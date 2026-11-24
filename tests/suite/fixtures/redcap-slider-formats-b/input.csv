@@ -1,0 +1,8 @@
+Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic (Show field only if...),Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation,
+subject_id,scope_demographics,,text,Study ID (piped) ,,,,,,,,,,,,, @HIDDEN,
+age,scope_demographics,,calc,Age (years),"round(datediff([dob],[enro_date],""y""),1)",,,,,,,,,,,, @HIDDEN,
+race,scope_demographics,,checkbox,Which of the following options best describes your race?  (Select all that best apply).,"1, American Indian or Alaska Native | 2, Asian | 3, Black or African American | 4, Hispanic or Latino | 5, Middle Eastern or North African | 6, White | 7, Unknown | 8, Other, Specify: {race_other} | 9, Prefer not to answer",,,,,,,y,,,,," @NONEOFTHEABOVE=7,9",
+liv_members,scope_demographics,,checkbox,Who lives in your current home with you? Please select all that apply.,"1, Self only (live alone) | 2, Significant other | 3, Child/children | 4, Roommate(s)/friends | 5, Parent(s) | 6, Other family members (e.g. siblings, grandparents, uncles, aunts, cousins) | 7, Prefer not to answer",,,,,,,y,,,,," @NONEOFTHEABOVE='1'
+@NONEOFTHEABOVE='7'",
+dh_vas,scope_dental_history_and_oral_hygiene_habits,,slider,Change the slider to mark your CURRENT dental/oral pain intensity,0 No Pain | 50 | 100 Worst Pain,,,,,,[ada_pain_discomfort] = '1',,RH,,,,,
+ada_smile_feel,scope_dental_history_and_oral_hygiene_habits,,slider,How do you feel about your smile?,Bad |  | Good,,number,1,10,,,,RH,,,,,

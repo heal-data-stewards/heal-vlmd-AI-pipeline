@@ -1,0 +1,10 @@
+dataset,domain,dataset_description,dataset_structure,order_number,oid,name,sas_field_name,data_type,length,display_format,description,mandatory,role,key_sequence,codelist_oid,codelist_name,cl_type,encodings,enum_values
+DM,DM,Demographics,One record per subject,1,IT.DM.STUDYID,STUDYID,STUDYID,text,8,,Study Identifier,Yes,Identifier,1,,,,,
+DM,DM,Demographics,One record per subject,2,IT.DM.DOMAIN,DOMAIN,DOMAIN,text,2,,Domain Abbreviation,Yes,Identifier,,CL.DMDOMAIN,Domain Abbreviation,encoded,DM=Demographics,
+DM,DM,Demographics,One record per subject,3,IT.DM.USUBJID,USUBJID,USUBJID,text,19,,Unique Subject Identifier,Yes,Identifier,2,,,,,
+EX,EX,Exposures,One record per treatment per visit date,1,IT.EX.STUDYID,STUDYID,STUDYID,text,8,,Study Identifier,Yes,Identifier,1,,,,,
+EX,EX,Exposures,One record per treatment per visit date,3,IT.EX.USUBJID,USUBJID,USUBJID,text,19,,Unique Subject Identifier,Yes,Identifier,2,,,,,
+QS,QS,BEST Trial Questionnaires,One record per questionnaire per question per time point per visit per subject,1,IT.QS.STUDYID,STUDYID,STUDYID,text,8,,Study Identifier,Yes,Identifier,1,,,,,
+QS,QS,BEST Trial Questionnaires,One record per questionnaire per question per time point per visit per subject,2,IT.QS.DOMAIN,DOMAIN,DOMAIN,text,2,,Domain Abbreviation,Yes,Identifier,,CL.QSDOMAIN,Domain Abbreviation,encoded,QS=Questionnaires,
+QS,QS,BEST Trial Questionnaires,One record per questionnaire per question per time point per visit per subject,3,IT.QS.USUBJID,USUBJID,USUBJID,text,19,,Unique Subject Identifier,Yes,Identifier,2,,,,,
+QS,QS,BEST Trial Questionnaires,One record per questionnaire per question per time point per visit per subject,4,IT.QS.QSSEQ,QSSEQ,QSSEQ,integer,8,3,Sequence Number,Yes,Identifier,,,,,,

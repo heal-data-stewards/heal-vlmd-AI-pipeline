@@ -39,7 +39,15 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the first two steps on every pu
 
    The tests run offline and need no credentials. They include the example conversions in `examples/`, which convert three synthetic dictionaries and validate the output against the VLMD schema. `python examples/run_examples.py` runs the same conversions with readable output. Add tests for what you change; a test that calls `run_pipeline.run()` must pass `output_dir=tmp_path / ...` so nothing is written into the repository. If you changed an LLM step, which the tests don't call, also run the pipeline on a file that exercises that step, and say in the pull request what you ran.
 
-3. **Update the README** if you changed a command-line flag, the format YAML anatomy, the `levels.format` values, the LLM models table or the exit codes. The README is the user manual and has to stay in sync with the code.
+3. **Check the problem-dictionary suite** if you changed detection, conversion, linting or a format YAML. `pytest` already runs it; this runs it on its own:
+
+   ```bash
+   python -m pytest tests/suite
+   ```
+
+   See [tests/suite/README.md](tests/suite/README.md) for what each fixture covers and how to add one. A fix for a known failure turns its strict `xfail` into a failing run: delete that entry from `tests/suite/manifest.yaml`, regenerate the README with `python tests/suite/build_readme.py`, and say so in the pull request.
+
+4. **Update the README** if you changed a command-line flag, the format YAML anatomy, the `levels.format` values, the LLM models table or the exit codes. The README is the user manual and has to stay in sync with the code.
 
 ## Guidelines
 

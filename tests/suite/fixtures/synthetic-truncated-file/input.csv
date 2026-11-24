@@ -1,0 +1,13 @@
+Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic (Show field only if...),Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation
+record_id,survey,,text,Record ID,,,,,,,,,,,,,
+age,survey,,text,Age in years,,,integer,18,99,,,y,,,,,
+sex,survey,,radio,Sex at birth,"1, Female | 2, Male | 3, Prefer not to say",,,,,,,,,,,,
+smoker,survey,,yesno,Do you currently smoke?,,,,,,,,,,,,,
+symptoms,survey,,checkbox,Which symptoms did you have?,"1, Fever | 2, Cough | 3, Fatigue",,,,,,,,,,,,
+pain_vas_text,survey,,slider,Rate your pain right now,No pain |  | Worst pain imaginable,,,,,,,,,,,,
+pain_vas_two,survey,,slider,How confident are you?,None | Extremely,,number,,,,,,,,,,
+pain_vas_anchor,survey,,slider,Pain on a 0-100 scale,0 No Pain | 50 | 100 Worst Pain,,,,,,,,,,,,
+bmi,survey,,calc,Body mass index,[weight] / ([height]*[height]/10000),,,,,,,,,,,,
+weight,survey,,text,Weight in kg,,,number,,,,,,,,,,
+height,survey,,text,Height in cm,,,number,,,,,,,,,,
+intro,survey,,descriptive,<b>Welcome</b> to the stu
