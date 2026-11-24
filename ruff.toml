@@ -6,8 +6,9 @@ target-version = "py311"
 line-length = 100
 
 [lint]
-# Ruff's defaults, plus import sorting.
-extend-select = ["I"]
+# Ruff's defaults, plus import sorting (I) and blind `except Exception` (BLE).
+# A deliberate `except Exception` needs `# noqa: BLE001` with a reason.
+extend-select = ["I", "BLE"]
 
 [lint.per-file-ignores]
 # A diagnostic script: it catches every error on purpose and sorts it by message.
