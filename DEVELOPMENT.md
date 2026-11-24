@@ -38,7 +38,7 @@ Every issue in both repositories belongs on the [board](https://github.com/orgs/
   | In review | A reviewer has commented, approved or requested changes | A review being submitted |
   | Done | The pull request merged into `main` and the issue closed | The merge |
 
-  The "Moved by" automation is `.github/workflows/project-status.yml`. It reads `Closes #N` in the pull request description and moves those issues forward, never back, except that turning a pull request back into a draft returns its issues to In progress.
+  The "Moved by" automation is `.github/workflows/project-status.yml`. It finds the issues a pull request closes (from `Closes #N` in its description and from the issues GitHub links to it) and moves them forward, never back, except that turning a pull request back into a draft returns its issues to In progress.
 
 - Assign yourself when you move an item to In progress, so two people (or agents) don't pick up the same issue.
 
@@ -69,10 +69,12 @@ docs/issue-88-development-md
 
 One branch is for one issue. Dependabot's branches (`dependabot/...`) are the only exception.
 
+The name is a convention; no check enforces it. GitHub's **Create a branch** button on an issue suggests `N-issue-title`; change it to `type/issue-N-slug` in the dialog before creating the branch. From the command line, `gh issue develop N --name type/issue-N-slug --checkout` does the same. Either way the branch is linked to the issue, and so is a pull request opened from it.
+
 ## Pull requests
 
 - **Target `main`.** Open the pull request as a **draft** while the work is in progress, and mark it ready for review when CI passes and you've checked it against the issue's acceptance criteria.
-- **Link the issue.** The description must contain `Closes #N` (or `Fixes`/`Resolves`), or `Closes heal-data-stewards/vlmd-app#N` for an issue in the other repository. The `linked-issue` check fails without it. If there is no issue for the work, create one first with the issue forms and make sure it is on the board; a pull request without an issue is invisible on the board.
+- **Link the issue.** Write `Closes #N` (or `Fixes`/`Resolves`) in the description, or `Closes heal-data-stewards/vlmd-app#N` for an issue in the other repository. An issue linked by GitHub also counts: one linked in the pull request's Development sidebar, or the issue a branch was made from with **Create a branch**. The `linked-issue` check fails if there is neither. Linking in the sidebar doesn't start a new run of the check, so re-run it afterwards. Prefer writing `Closes #N` anyway: it's visible to reviewers, and it's the only link a stacked pull request has. If there is no issue for the work, create one first with the issue forms and make sure it is on the board; a pull request without an issue is invisible on the board.
 - **Fill in the template**: what changed, how it was tested, and which documentation was updated.
 - Follow the commit and pull request rules in [CONTRIBUTING.md](CONTRIBUTING.md#pull-requests): one change per pull request, commits that make sense on their own, and a title that describes what the change does.
 

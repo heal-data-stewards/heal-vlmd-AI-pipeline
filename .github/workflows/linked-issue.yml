@@ -1,13 +1,18 @@
 name: Linked issue
 
-# Fails a pull request whose description has no closing keyword (Closes/Fixes/Resolves #N
-# or org/repo#N). A required check on main; see "Pull requests" in DEVELOPMENT.md.
+# Fails a pull request that closes no issue: no closing keyword (Closes/Fixes/Resolves #N or
+# org/repo#N) in its description, and no issue linked by GitHub (Development sidebar, or a
+# branch made with an issue's "Create a branch" button). A required check on main; see
+# "Pull requests" in DEVELOPMENT.md. Linking an issue in the sidebar doesn't trigger a new
+# run, so re-run this check after doing it.
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize, ready_for_review]
 
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 
 jobs:
   linked-issue:
@@ -21,5 +26,7 @@ jobs:
         if: github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python .github/scripts/linked_issues.py check

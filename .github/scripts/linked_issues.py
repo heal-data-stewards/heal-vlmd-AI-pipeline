@@ -2,8 +2,15 @@
 
 Used by two workflows; see "Pull requests" and "The board" in DEVELOPMENT.md.
 
-    python .github/scripts/linked_issues.py check   # linked-issue.yml: fail if PR_BODY closes no issue
+    python .github/scripts/linked_issues.py check   # linked-issue.yml: fail if the PR closes no issue
     python .github/scripts/linked_issues.py sync    # project-status.yml: move closed issues on the board
+
+A pull request's issues are the union of two sources:
+- closing keywords in its description (`Closes #N`), parsed here. This is the only source
+  for a stacked pull request, because GitHub links keywords only on pull requests into main.
+- the issues GitHub itself links to it (`closingIssuesReferences`): keywords on a pull request
+  into main, an issue linked in the Development sidebar, and a branch made with an issue's
+  "Create a branch" button.
 
 Standard library only, so the workflows need no install step.
 """
@@ -125,6 +132,17 @@ query($owner: String!, $repo: String!, $number: Int!) {
   }
 }"""
 
+LINKED_QUERY = """
+query($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      closingIssuesReferences(first: 50) {
+        nodes { number repository { name owner { login } } }
+      }
+    }
+  }
+}"""
+
 ADD_ITEM = """
 mutation($project: ID!, $content: ID!) {
   addProjectV2ItemById(input: {projectId: $project, contentId: $content}) { item { id } }
@@ -136,6 +154,32 @@ mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
     projectId: $project, itemId: $item, fieldId: $field, value: {singleSelectOptionId: $option}
   }) { projectV2Item { id } }
 }"""
+
+
+def github_linked_refs(token, repo_full_name, pr_number):
+    """The (owner, repo, number) issues GitHub links to a pull request as closing it."""
+    owner, repo = repo_full_name.split("/", 1)
+    pr = graphql(token, LINKED_QUERY, owner=owner, repo=repo, number=pr_number)
+    nodes = pr["repository"]["pullRequest"]["closingIssuesReferences"]["nodes"]
+    return [
+        (n["repository"]["owner"]["login"], n["repository"]["name"], n["number"]) for n in nodes
+    ]
+
+
+def all_refs(body, repo_full_name, pr_number, token):
+    """Closing keywords in the body plus GitHub's own links, in that order, without repeats.
+
+    If GitHub can't be asked (no token, or the call fails), falls back to the body alone.
+    """
+    refs = closing_refs(body, repo_full_name)
+    if not token:
+        return refs
+    try:
+        linked = github_linked_refs(token, repo_full_name, pr_number)
+    except GraphQLError as e:
+        print(f"::warning::Couldn't read the issues GitHub links to this pull request: {e}")
+        return refs
+    return refs + [r for r in linked if r not in refs]
 
 
 def sync_issue(token, project, ref, target, may_move_back):
@@ -175,15 +219,21 @@ def sync_issue(token, project, ref, target, may_move_back):
 
 
 def cmd_check():
-    refs = closing_refs(os.environ.get("PR_BODY", ""), os.environ["GITHUB_REPOSITORY"])
+    refs = all_refs(
+        os.environ.get("PR_BODY", ""),
+        os.environ["GITHUB_REPOSITORY"],
+        int(os.environ["PR_NUMBER"]),
+        os.environ.get("GH_TOKEN"),
+    )
     if refs:
         print("Closes " + ", ".join(f"{o}/{r}#{n}" for o, r, n in refs))
         return 0
     print(
-        "::error title=No linked issue::The pull request description must say which issue it "
-        "closes, e.g. 'Closes #123' or 'Closes heal-data-stewards/vlmd-app#45'. If there is no "
-        "issue, create one with the issue forms, make sure it is on the project board, and link "
-        "it. See 'Pull requests' in DEVELOPMENT.md."
+        "::error title=No linked issue::This pull request doesn't close an issue. Add "
+        "'Closes #123' (or 'Closes heal-data-stewards/vlmd-app#45') to the description, or link "
+        "the issue in the Development sidebar and re-run this check. If there is no issue, "
+        "create one with the issue forms and make sure it is on the project board. See "
+        "'Pull requests' in DEVELOPMENT.md."
     )
     return 1
 
@@ -193,14 +243,18 @@ def cmd_sync():
     with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as f:
         event = json.load(f)
     decision = target_status(event_name, event)
-    refs = closing_refs(event["pull_request"].get("body"), event["repository"]["full_name"])
-    if decision is None or not refs:
+    if decision is None:
         print("Nothing to move.")
         return 0
     token = os.environ.get("PROJECT_TOKEN")
     if not token:
         # Expected for reviews on pull requests from forks, which get no secrets.
         print("::warning::PROJECT_TOKEN is not set, so the board was not updated.")
+        return 0
+    pr = event["pull_request"]
+    refs = all_refs(pr.get("body"), event["repository"]["full_name"], pr["number"], token)
+    if not refs:
+        print("This pull request closes no issue; nothing to move.")
         return 0
     target, may_move_back = decision
     try:

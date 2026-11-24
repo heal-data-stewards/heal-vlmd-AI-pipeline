@@ -5,7 +5,8 @@
 Closes #
 
 <!--
-Required: the `linked-issue` check fails without a closing keyword (`Closes`, `Fixes` or `Resolves`).
+Required: the `linked-issue` check fails unless this pull request closes an issue, through a closing keyword
+(`Closes`, `Fixes` or `Resolves`) here or an issue linked in the Development sidebar. Prefer the keyword: reviewers see it.
 - An issue in the other repository: `Closes heal-data-stewards/vlmd-app#N`.
 - No issue for this work yet? Create one first with the issue forms (Bug, Feature or Task), make sure it is on the board
   (https://github.com/orgs/heal-data-stewards/projects/1), then link it here. Work without an issue is invisible on the board.
