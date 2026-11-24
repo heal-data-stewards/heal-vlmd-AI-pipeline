@@ -192,7 +192,7 @@ def validation_errors(vlmd_doc: dict) -> tuple[bool, list[str]]:
         from healdata_utils import validate_vlmd_json
 
         result = validate_vlmd_json(vlmd_doc)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - fail closed; see the docstring
         return False, [f"validation could not run ({e})"]
     report = result.get("report", result)
     errors = [format_validation_error(e) for e in report.get("errors", [])]
@@ -212,12 +212,20 @@ def validate_output(vlmd_doc: dict, errors_out: list[str] | None = None) -> bool
     return is_valid
 
 
-def merge(converted_path: str, fixes_path: str | None, output_dir: str,
-          hdp_id: str, appl_id: str, title: str,
-          study_label: str, format_name: str, validate: bool,
-          file_stem: str | None = None,
-          input_filename: str | None = None,
-          errors_out: list[str] | None = None) -> int:
+def merge(
+    converted_path: str,
+    fixes_path: str | None,
+    output_dir: str,
+    hdp_id: str,
+    appl_id: str,
+    title: str,
+    study_label: str,
+    format_name: str,
+    validate: bool,
+    file_stem: str | None = None,
+    input_filename: str | None = None,
+    errors_out: list[str] | None = None,
+) -> int:
     """Merge fixes, write the VLMD files, and return 0, or 2 if validation failed.
 
     If errors_out is given, the validation errors (as strings) are appended to it.
