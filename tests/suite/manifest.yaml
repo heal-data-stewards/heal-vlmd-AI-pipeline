@@ -1,0 +1,57 @@
+# One entry per fixture. Fields:
+#   id           directory under fixtures/
+#   fixture      file inside that directory
+#   description  what the case checks (shown in README.md)
+#   covers       ids from failure_modes.yaml
+#   tier         offline (default) | llm (needs credentials, --run-llm) | local (needs
+#                sources.local.yaml, --run-local)
+#   status       active (default) | xfail (whole case can't pass yet; needs xfail_reason)
+#   xfail        optional map of check id -> reason, for checks the pipeline can't pass yet
+#                (check ids: format, rows_in, fields_out, schema_valid, flagged:NAME,
+#                not_flagged:NAME, field:NAME). strict: a fixed check fails the run until removed.
+#   sheet        optional: sheet to extract from an .xlsx fixture
+#   expect       properties checked by suite_lib.check (see there)
+# README.md is generated from this file: python tests/suite/build_readme.py
+- id: synthetic-redcap-types
+  fixture: input.csv
+  description: >-
+    Hand-written REDCap dictionary with one of each field type: text with validation, radio,
+    yesno, checkbox, calc, three slider label shapes, descriptive with HTML, notes and a
+    piped field.
+  covers: [redcap-detect, slider, checkbox, calc, descriptive, yesno, html, piped-fields, count-parity]
+  xfail:
+    field:age: REDCap Text Validation Min/Max are not mapped to constraints.minimum/maximum
+    field:pain_vas_text: slider labels are parsed as choices and become constraints.enum
+    field:pain_vas_two: slider labels are parsed as choices and become constraints.enum
+    field:pain_vas_anchor: slider labels are parsed as choices and become constraints.enum
+    field:bmi: calc formula is parsed as a choice and becomes constraints.enum
+    field:intro: HTML is left in descriptions
+  expect:
+    format: redcap
+    rows_in: 14
+    fields_out: [13, 14]   # a descriptive row may be kept or dropped; both are acceptable
+    schema_valid: true
+    fields:
+      age: {type: integer, minimum: 18, maximum: 99}
+      # A slider is always 0-100 and is never restricted to its endpoint labels, but the
+      # labels themselves must survive (where they go is deliberately not asserted).
+      pain_vas_text:
+        type: [integer, number]
+        minimum: 0
+        maximum: 100
+        no_enum: true
+        labels_preserved: [No pain, Worst pain imaginable]
+      pain_vas_two:
+        type: [integer, number]
+        minimum: 0
+        maximum: 100
+        no_enum: true
+        labels_preserved: [None, Extremely]
+      pain_vas_anchor:
+        type: [integer, number]
+        minimum: 0
+        maximum: 100
+        no_enum: true
+        labels_preserved: [No Pain, Worst Pain]
+      bmi: {no_enum: true}
+      intro: {no_html: true}

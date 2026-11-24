@@ -1,3 +1,6 @@
 -r requirements.txt
 # Pinned: Ruff's formatting changes between releases. See CONTRIBUTING.md before bumping.
 ruff==0.17.0
+pytest>=8
+# Only for tests/suite/build_fixtures.py (cutting page excerpts out of PDFs)
+pypdf>=4

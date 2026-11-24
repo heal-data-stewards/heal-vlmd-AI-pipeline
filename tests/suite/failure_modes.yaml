@@ -1,0 +1,51 @@
+# Catalog of things that can go wrong with an input data dictionary.
+# Each fixture in manifest.yaml lists the ids it exercises under `covers`;
+# tests/suite/README.md is generated from these two files (build_readme.py).
+detection:
+  redcap-detect: REDCap export recognised as REDCap and converted as such
+  ndar-detect: NDAR data structure recognised and converted with the NDAR rules
+  qualtrics-detect: Native Qualtrics export recognised as Qualtrics
+  mislabelled-format: File name or sheet name suggests one format, the columns are another
+  already-heal: Already a HEAL VLMD file; should pass through unchanged
+  not-a-dictionary: Not a data dictionary at all; should be rejected cleanly
+  ambiguous-format: Columns match several formats; confidence should be reported as low
+  generic-fallback: No known format; falls back to the generic or LLM-proposed mapping
+container:
+  pdf: PDF codebook (text layer, tables split across pages)
+  multi-sheet: One workbook, many sheets (one per instrument or aim)
+  hidden-sheet: Hidden, stray or empty sheets next to the real dictionary
+  prose-sheet: A sheet of notes or prose instead of a table
+  header-offset: Header row is not row 1 (title rows, blank leading rows)
+  delimiter: Tab- or semicolon-separated input
+  encoding: Latin-1, BOM or mojibake
+  multi-file: One dictionary split over several files
+  duplicate-versions: Several near-identical versions of the same dictionary
+  transposed: Variables run across columns instead of down rows
+  truncated-file: File ends mid-row
+description:
+  empty-description: Descriptions missing; must be flagged, not invented
+  placeholder-description: TBD, N/A, "see protocol" and similar
+  short-description: Description is very short or only repeats the name
+  html: HTML tags and entities in labels or descriptions
+  piped-fields: REDCap piped fields such as [var] in text
+  enum-in-description: Value codes written into the description text
+type:
+  slider: REDCap slider; the labels are endpoint text, not value codes
+  checkbox: REDCap checkbox; one field exports as several columns
+  calc: Calculated field; the formula is not a set of choices
+  descriptive: Display-only field with no data
+  yesno: Implicit 1=Yes / 0=No encoding
+  enum-variants: Several encodings of value labels (1,Yes|2,No / 1=Yes;2=No / newline)
+  oversized-enum: Long code list that should be a min/max range
+  missing-codes: Codes like -9, 999, NA mixed in with real values
+  type-mismatch: Declared type disagrees with the values or the validation column
+  date-format: Date or time format strings
+names:
+  duplicate-names: Same variable name repeated within or across sheets
+  bad-names: Names that break the schema name pattern
+  custom-columns: Extra columns that must be kept under `custom`
+  section-rows: Section headers mixed in with variable rows
+robustness:
+  count-parity: Number of fields out matches the number of variables in
+  prompt-injection: Instructions hidden in a description
+  partial-valid: One bad row must not stop the rest being converted

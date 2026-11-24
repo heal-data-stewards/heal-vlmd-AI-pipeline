@@ -34,9 +34,17 @@ Python 3.11 or later is required. Conversion, detection and validation run witho
    python examples/run_examples.py
    ```
 
-   This converts the three synthetic dictionaries in `examples/` with no LLM calls and validates the output against the VLMD schema. It is the only automated check in the repository, so run it after changing any pipeline stage. Exit 0 means all three passed. If you changed an LLM step, also run the pipeline on a file that exercises that step, and say in the pull request what you ran.
+   This converts the three synthetic dictionaries in `examples/` with no LLM calls and validates the output against the VLMD schema. Run it after changing any pipeline stage. Exit 0 means all three passed. If you changed an LLM step, also run the pipeline on a file that exercises that step, and say in the pull request what you ran.
 
-3. **Update the README** if you changed a command-line flag, the format YAML anatomy, the `levels.format` values, the LLM models table or the exit codes. The README is the user manual and has to stay in sync with the code.
+3. **Run the test suite** if you changed detection, conversion, linting or a format YAML.
+
+   ```bash
+   python -m pytest tests/suite
+   ```
+
+   See [tests/suite/README.md](tests/suite/README.md) for what each fixture covers and how to add one. A fix for a known failure turns its strict `xfail` into a failing run: delete that entry from `tests/suite/manifest.yaml`, regenerate the README with `python tests/suite/build_readme.py`, and say so in the pull request.
+
+4. **Update the README** if you changed a command-line flag, the format YAML anatomy, the `levels.format` values, the LLM models table or the exit codes. The README is the user manual and has to stay in sync with the code.
 
 ## Guidelines
 

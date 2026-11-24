@@ -16,7 +16,7 @@ cp .env.template .env                    # only needed for LLM steps
 # Format Python code before committing
 python -m ruff format .
 
-# Smoke test — the only automated check in the repo. Exit 0 = all three examples convert and pass schema validation.
+# Smoke test. Exit 0 = all three examples convert and pass schema validation.
 python examples/run_examples.py
 
 # Full pipeline on a real file
@@ -37,7 +37,7 @@ python probe_azure.py
 
 Python code (including Python blocks in Markdown files) is formatted with `python -m ruff format .`, configured in `ruff.toml`, using the Ruff version pinned in `requirements-dev.txt`. Before bumping that pin or touching `.git-blame-ignore-revs`, read "Bump Ruff deliberately" and the pull request rules in `CONTRIBUTING.md`.
 
-There is no test suite. `examples/run_examples.py` runs `--skip-llm --no-detect` against the three synthetic CSVs in `examples/` and validates the output; run it after touching any stage. If `healdata_utils` can't be imported, validation fails rather than being skipped, so a broken environment shows up as FAIL (exit 2), not a false PASS. `work/`, `output/` and `examples/output/` are gitignored scratch.
+`tests/suite/` is a pytest suite of input-dictionary excerpts that exercise known failure modes (see its README for what each fixture covers); run `python -m pytest tests/suite` after touching detection, conversion or lint. Checks the pipeline can't pass yet are strict `xfail`s listed in `tests/suite/manifest.yaml`, so fixing one makes the run fail until its `xfail` entry is deleted. `examples/run_examples.py` is the older smoke test: it runs `--skip-llm --no-detect` against the three synthetic CSVs in `examples/` and validates the output; run it after touching any stage. If `healdata_utils` can't be imported, validation fails rather than being skipped, so a broken environment shows up as FAIL (exit 2), not a false PASS. `work/`, `output/`, `examples/output/` and `tests/suite/sources.local.yaml` (local paths of the source dictionaries) are gitignored.
 
 ## Architecture
 
