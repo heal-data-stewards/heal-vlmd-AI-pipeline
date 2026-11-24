@@ -2,6 +2,7 @@
 
 Supports Azure AI Foundry (primary for HEAL) and Anthropic (alternative).
 """
+
 import json
 import os
 from pathlib import Path
@@ -72,9 +73,7 @@ def _get_azure_client():
         key = os.getenv("AZURE_OPENAI_API_KEY", "")
         endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
         if not key or not endpoint:
-            raise ValueError(
-                "AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT must be set in .env"
-            )
+            raise ValueError("AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT must be set in .env")
         # Endpoints ending in /v1 are the OpenAI-compatible path — use the
         # standard OpenAI client with base_url (no api-version needed).
         # Classic .openai.azure.com or .services.ai.azure.com endpoints use
@@ -87,12 +86,14 @@ def _get_azure_client():
                 max_retries=2,
             )
         else:
-            if endpoint.endswith("/openai"):
-                endpoint = endpoint[: -len("/openai")]
+            endpoint = endpoint.removesuffix("/openai")
             version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
             _azure_client = AzureOpenAI(
-                api_key=key, azure_endpoint=endpoint,
-                api_version=version, timeout=120.0, max_retries=2,
+                api_key=key,
+                azure_endpoint=endpoint,
+                api_version=version,
+                timeout=120.0,
+                max_retries=2,
             )
     return _azure_client
 
@@ -111,8 +112,9 @@ def _get_anthropic_client():
     return _anthropic_client
 
 
-def _call_azure(system: str, user: str, model_cfg: dict,
-                max_tokens: int, temperature: float) -> tuple[str, bool, str]:
+def _call_azure(
+    system: str, user: str, model_cfg: dict, max_tokens: int, temperature: float
+) -> tuple[str, bool, str]:
     try:
         c = _get_azure_client()
         msgs = [
@@ -131,12 +133,13 @@ def _call_azure(system: str, user: str, model_cfg: dict,
             kwargs["max_tokens"] = max_tokens
         resp = c.chat.completions.create(**kwargs)
         return resp.choices[0].message.content.strip(), True, ""
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes an error result
         return "", False, str(e)
 
 
-def _call_anthropic(system: str, user: str, model_cfg: dict,
-                    max_tokens: int, temperature: float) -> tuple[str, bool, str]:
+def _call_anthropic(
+    system: str, user: str, model_cfg: dict, max_tokens: int, temperature: float
+) -> tuple[str, bool, str]:
     try:
         c = _get_anthropic_client()
         kwargs = {
@@ -149,12 +152,17 @@ def _call_anthropic(system: str, user: str, model_cfg: dict,
             kwargs["temperature"] = temperature
         resp = c.messages.create(**kwargs)
         return resp.content[0].text.strip(), True, ""
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes an error result
         return "", False, str(e)
 
 
-def call_llm(system: str, user: str, model_key: str = DEFAULT_MODEL,
-             max_tokens: int = 4096, temperature: float = 0.0) -> tuple[str, bool, str]:
+def call_llm(
+    system: str,
+    user: str,
+    model_key: str = DEFAULT_MODEL,
+    max_tokens: int = 4096,
+    temperature: float = 0.0,
+) -> tuple[str, bool, str]:
     """Call an LLM. Returns (text, success, error_message)."""
     if model_key not in MODELS:
         return "", False, f"Unknown model: {model_key!r}. Available: {list(MODELS)}"
@@ -171,7 +179,7 @@ def parse_json_response(text: str):
     s = text.strip()
     for fence in ["```json", "```"]:
         if s.startswith(fence):
-            s = s[len(fence):].strip()
+            s = s[len(fence) :].strip()
     if s.endswith("```"):
         s = s[:-3].strip()
     return json.loads(s)
