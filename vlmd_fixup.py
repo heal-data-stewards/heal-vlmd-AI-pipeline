@@ -24,6 +24,12 @@ MAX_RETRIES = 2
 ENCODING = tiktoken.get_encoding("cl100k_base")
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
+# Description/title text is authoritative source content, not something this pipeline
+# should author or rewrite on a study's behalf — only flag it for a human. Stripped here
+# (not just discouraged in the prompt) so there is no code path that can send one of
+# these issue codes to the model, regardless of what any upstream triage step decided.
+DESCRIPTION_CONTENT_ISSUES = {"missing_description", "description_too_short", "encoding_corruption"}
+
 # Rough token budget: warn if input alone suggests the output may overflow
 # (each record ≈ 200 tokens of metadata on top of the field content)
 OUTPUT_OVERHEAD_PER_RECORD = 200
@@ -160,6 +166,32 @@ def fixup(
         Path(output_path).write_text("[]", encoding="utf-8")
         return 0
 
+    # Strip description-content issues before anything is built for the LLM — see
+    # DESCRIPTION_CONTENT_ISSUES above. A record left with no other issues is skipped
+    # entirely (it stays in the on-disk lint report for human review, just never reaches
+    # the model); a record with both a description issue and e.g. missing_type still gets
+    # the type fixed, just not the description.
+    fixable_records = []
+    skipped_description_only = 0
+    for rec in lint_records:
+        remaining = [i for i in rec["issues"] if i not in DESCRIPTION_CONTENT_ISSUES]
+        if remaining:
+            fixable_records.append({**rec, "issues": remaining})
+        elif rec["issues"]:
+            skipped_description_only += 1
+
+    if skipped_description_only:
+        print(
+            f"  {skipped_description_only} field(s) flagged only for description-content "
+            "issues — left for human review, not sent to the LLM.",
+            flush=True,
+        )
+
+    if not fixable_records:
+        print("No fixable (non-description) lint records.", flush=True)
+        Path(output_path).write_text("[]", encoding="utf-8")
+        return 0
+
     allowed_cols = allowed_context_columns(format_yaml)
     items_for_llm = [
         {
@@ -172,7 +204,7 @@ def fixup(
             },
             "vlmd_field_draft": rec["vlmd_field_draft"],
         }
-        for rec in lint_records
+        for rec in fixable_records
     ]
 
     print(f"Fixing {len(items_for_llm)} flagged fields with model {model_key!r} ...", flush=True)

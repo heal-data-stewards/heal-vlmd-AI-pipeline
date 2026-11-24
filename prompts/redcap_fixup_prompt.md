@@ -51,46 +51,15 @@ Key columns available in `source_row`:
 
 ## Remediation by issue code
 
-### `missing_description`
-Generate a concise, plain-English description using:
-
-1. `source_row["Field Label"]` — use this directly if it is a complete sentence or meaningful phrase
-   (clean it: remove trailing `:`, fix capitalization, remove HTML tags)
-2. If `Field Label` is empty or just the variable name, infer from:
-   - `source_row["Form Name"]` — instrument context
-   - `source_row["Section Header"]` — sub-section context
-   - `source_row["Field Note"]` — supplemental description
-   - `name` components (split on underscores)
-3. For checkbox sub-variables (names ending in `___1`, `___2`, etc.), describe the specific
-   option being captured: "Indicates whether [option label] was selected for [parent question]."
-
-Rules:
-- 1–2 sentences, plain English
-- Do not start with "This field", "This variable", or "The variable"
-- Do not repeat the variable name verbatim
-
-**Examples:**
-
-| name | source context | good description |
-|------|---------------|-----------------|
-| `consent_obtained` | Field Label="Informed consent obtained?", Form Name="Enrollment" | "Indicates whether informed consent was obtained from the participant at enrollment." |
-| `pain_scale_score` | Field Label="", Form Name="Pain Assessment", Section Header="VAS Scale" | "Pain intensity score from the Visual Analog Scale (VAS) administered at this visit." |
-| `race___3` | Field Label="Race (choice=American Indian or Alaska Native)", Form Name="Demographics" | "Indicates whether the participant identified as American Indian or Alaska Native." |
-
----
-
-### `description_too_short`
-The description is a known placeholder ("N/A", "See codebook", "TBD", etc.) with no real
-content. Replace it entirely using the same approach as `missing_description`.
-
----
-
-### `encoding_corruption`
-`description` or `title` still contains an unrecoverable replacement character (�) after
-automatic mojibake/smart-quote repair — the original bytes were already lost before this
-pipeline ever saw the file. Write a clean replacement using the surrounding text and other
-`source_row` columns, following the same approach as `missing_description`. Do not attempt
-to guess at or reproduce the corrupted character(s).
+### `missing_description`, `description_too_short`, `encoding_corruption`
+**Never sent to you.** Description text is authoritative source content — this pipeline's
+own code (`vlmd_fixup.py`) strips these three issue codes from every record before it is
+sent to the model, so there is no code path by which you can author or rewrite a
+description. An incomplete, placeholder, or corrupted description is left flagged in the
+lint report for a human to review and fill in (or to decide a deterministic column
+combination — e.g. pulling in `Field Note` — is warranted) — it is never guessed at here.
+If a record you receive somehow still carries one of these three codes, treat it as a bug:
+do not act on it, and do not touch that field's `description`/`title`.
 
 ---
 
