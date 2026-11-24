@@ -1,0 +1,38 @@
+name: Project status
+
+# Moves the issues a pull request closes along the board as the pull request changes
+# state. See "The board" in DEVELOPMENT.md. Needs the PROJECT_TOKEN secret (a fine-grained
+# PAT with organization Projects read/write); without it this logs a warning and does nothing.
+#
+# pull_request_target runs the workflow and script from main, never from the pull request's
+# branch, so it can use the secret for pull requests from forks too. It doesn't check out or
+# run the pull request's code.
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, ready_for_review, converted_to_draft, closed]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-status-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Update the board
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PROJECT_OWNER: heal-data-stewards
+          PROJECT_NUMBER: "1"
+        run: python .github/scripts/linked_issues.py sync
