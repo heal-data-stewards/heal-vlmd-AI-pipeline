@@ -5,7 +5,6 @@ python tests/suite/build_readme.py --check   # exit 1 if README.md is out of dat
 """
 
 import sys
-from pathlib import Path
 
 import suite_lib
 
