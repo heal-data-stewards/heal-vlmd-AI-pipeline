@@ -27,7 +27,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the first two steps on every pu
    python -m ruff check .
    ```
 
-   Run these before you open the pull request, and again before you ask for another round of review. CI runs `ruff format --check .`, which fails on any file that needs formatting. Besides `.py` files, Ruff also formats the Python code blocks in Markdown files such as this one and the README. `python -m ruff check --fix .` applies the fixes Ruff is sure of; read them before committing. A deliberate `except Exception` at a stage boundary (an LLM call, the validator, a PDF read) is marked `# noqa: BLE001` with a reason rather than narrowed, because narrowing it would turn an exit code into a traceback.
+   Run these before you open the pull request, and again before you ask for another round of review. CI runs `ruff format --check .`, which fails on any file that needs formatting. Besides `.py` files, Ruff also formats the Python code blocks in Markdown files such as this one and the README. `python -m ruff check --fix .` applies the fixes Ruff is sure of; read them before committing. A deliberate `except Exception` at a stage boundary (an LLM call, the validator, a PDF read) is marked `# noqa: BLE001` with a reason rather than narrowed (Ruff's `BLE` rules are on, so `ruff check` fails on an unmarked one), because narrowing it would turn an exit code into a traceback.
 
    Run Ruff as `python -m ruff` from the virtual environment, so you get the version pinned in `requirements-dev.txt`. A bare `ruff` may be a different version installed elsewhere (Homebrew, pipx), and other versions format some code differently and will produce unrelated changes. Without the virtual environment, `uvx ruff@0.17.0` runs the pinned version.
 
