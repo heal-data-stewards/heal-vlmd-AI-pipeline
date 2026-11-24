@@ -1,6 +1,14 @@
 # NDAR Data Dictionary Conversion — Design Notes
 
-Captured from a design discussion on 2026-09-03 that was interrupted before implementation started (pivoted to a vlmd-app ticket). Nothing described here — `vlmd_ndar.py`, the catalog, the `short_name`-list workflow — has been built yet. This is the planning state to pick up from, not a status report on working code.
+Captured from a design discussion on 2026-09-03 that was interrupted before implementation started (pivoted to a vlmd-app ticket).
+
+**Status as of 2026-10-01: `vlmd_ndar.py` is built and working.** It implements the extraction (per-row DataType/ValueRange/Notes polymorphism) and declares `formats/ndar_intermediate.yaml` as the thin identity-mapping format described below. Verified end-to-end against both reference examples:
+- HDP00201 (4 separate `*_definitions.xlsx` files): all 4 forms converted, 0 schema errors, enum/range output matches the hand-converted ground truth (`heal-data-dictionaries/data-dictionaries/HDP00201/vlmd/*.redcap/*.json`) field-for-field on spot checks (`sex`, `sf1`, `interview_age`).
+- HDP00104 (single 26-sheet combined workbook): all 26 forms converted, 0 schema errors, including the `0::1000;-9` range+sentinel ad hoc case (`cssrs01.sbtnal`), which is flagged in the field description for human review rather than silently dropped.
+
+One known divergence from the old hand-converted ground truth: enum fields whose keys are all-numeric (e.g. `sf1`'s `1,2,3,4,5,888,-999`) get auto-upgraded from `type: string` to `type: integer` by `vlmd_convert.py`'s existing generic logic (not NDAR-specific — this runs for every format). The ground truth kept these as `string`. Not treated as a bug; flagged here in case it surprises someone diffing against old conversions.
+
+Not yet built: the reuse catalog itself (location decided — `heal-vlmd-AI-pipeline/data/`, see below — but no catalog code/content yet), and wiring NDAR auto-detection into `run_pipeline.py`'s normal dispatch (`vlmd_ndar.py` currently runs standalone via `--run-pipeline`, calling `run_pipeline.run()` directly per form rather than being one of the `.xlsx`/`.pdf` branches `run_pipeline.py` itself auto-detects).
 
 ## Goal
 
@@ -104,8 +112,8 @@ Workflow for a new collection (given a `short_name` list):
 
 **Flagged, not solved:** NDA structures can get versioned/updated over time. A catalog entry should probably record which version it was converted from, so a future NDA update doesn't silently get masked by a stale cached entry. Noted as a real gap; "detect staleness" logic deliberately deferred rather than built speculatively.
 
-**Where should the catalog live? — OPEN, not decided.** Claude's recommendation was `heal-data-dictionaries` (not `heal-vlmd-AI-pipeline`), reasoning: `heal-vlmd-AI-pipeline` is the general-purpose *conversion tool* (REDCap, HBCD, Stata, CDE, generic-csv, soon NDAR all pass through it) and doesn't hold any converted *content* today — all validated output already lives in `heal-data-dictionaries`. Bolting an NDAR-specific catalog onto the tool repo would break that existing split and make NDAR the one format with special-cased storage baked into the tool itself. The only real cost of putting it in `heal-data-dictionaries` instead is `vlmd_ndar.py` needing a configurable path to that repo's checkout (or a `--catalog-dir` flag) rather than assuming a local directory. Hinashah asked "would it be too much to keep the catalog within this repo [heal-vlmd-AI-pipeline]?" and Claude said not from a size perspective (a few dozen to a couple hundred files is trivial for git) but held the recommendation for consistency reasons — **hinashah's actual decision on this was never given before the conversation moved on.**
+**Where should the catalog live? — DECIDED (2026-10-01).** Catalog lives in this repo (`heal-vlmd-AI-pipeline`), in a top-level `data/` folder (e.g. `data/ndar-catalog/phq01/phq01.vlmd.json` + `.vlmd.csv` + provenance file). Hinashah's call: keep it here for now since size isn't a real concern (a few dozen to a couple hundred files is trivial for git), with the explicit option to move it to `heal-data-dictionaries` later if the tool/content split argument ends up mattering more once there's real catalog content to look at. `vlmd_ndar.py` should read the catalog path as a configurable location (e.g. default to `data/ndar-catalog`, overridable via flag/env) rather than hardcoding it, so a future move doesn't require a code rewrite.
 
 ## Immediate next step when resuming
 
-Confirm the catalog location, then start on `vlmd_ndar.py` — whole-workbook input, per-form output, common-variable/longitudinal handling explicitly flagged as future work, not blocking v1.
+Catalog location is settled — start on `vlmd_ndar.py` — whole-workbook input, per-form output, common-variable/longitudinal handling explicitly flagged as future work, not blocking v1.

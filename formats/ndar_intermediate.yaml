@@ -1,0 +1,52 @@
+format_name: ndar-intermediate
+description: >-
+  NDAR/NDA data dictionary — thin, declarative format for the intermediate CSV
+  that vlmd_ndar.py produces (one CSV per NDA structure/form). All the
+  judgment-heavy work (type vs. range vs. enum derivation from DataType +
+  ValueRange + Notes) already happened in vlmd_ndar.py, so this spec is
+  mostly identity mapping.
+
+input_reader: csv
+
+name_column: name
+description_column: label
+
+type_mapping:
+  source_column: type
+  lookup:
+    string:   string
+    integer:  integer
+    number:   number
+    date:     date
+    datetime: datetime
+    time:     time
+    boolean:  boolean
+
+section:
+  primary_column: section
+
+levels:
+  source_column: choices
+  format: pipe_separated
+  pair_separator: ","
+  choice_separator: "|"
+
+minimum_column: minimum
+maximum_column: maximum
+
+custom_columns:
+  - required
+  - aliases
+
+related_concepts: []
+
+fixup_prompt: prompts/generic_fixup_prompt.md
+system_invariants_prompt: prompts/system_invariants_vlmd.md
+
+detection:
+  # Never auto-detected — vlmd_ndar.py's output always declares this format explicitly.
+  signature_columns:
+    strong: []
+    supporting: []
+  confidence_threshold: 1.1
+  file_extensions: []
