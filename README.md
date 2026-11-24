@@ -722,34 +722,6 @@ Run it from the repo root (it serves streamable HTTP at `/mcp`; needs `mcp>=2.0`
 python -m mcp_server.server                      # MCP_SERVER_HOST / MCP_SERVER_PORT, default 0.0.0.0:8090
 python mcp_server/verify.py                      # manual smoke test against a running server (MCP_URL)
 docker build -f mcp_server/Dockerfile .          # build context is the repo root
-```python
-# mcp_server.py (stub — not yet implemented)
-
-
-@mcp.tool()
-def lookup_study(hdp_id: str) -> dict:
-    """Fetch study info from the HEAL platform. Returns appl_id, study_name, investigators."""
-    ...
-
-
-@mcp.tool()
-def detect_format(file_path: str, model: str = "azure-gpt-4.1-mini") -> dict:
-    """Detect the format of a data dictionary file."""
-    ...
-
-
-@mcp.tool()
-def save_format_mapping(applid: str, mapping: dict, hdp_id: str = "") -> dict:
-    """Save a confirmed column mapping as formats/{applid}.yaml for future reuse."""
-    ...
-
-
-@mcp.tool()
-def run_conversion(
-    file_path: str, format_yaml: str, appl_id: str, hdp_id: str = "", dest_dir: str = ""
-) -> dict:
-    """Run the full conversion pipeline. Returns output file paths and validation status."""
-    ...
 ```
 
 File paths are resolved on the server's filesystem, so in a container callers must pass paths under the volume they share with it. LLM tools read credentials from the server's `.env` or environment.
