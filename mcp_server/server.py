@@ -315,11 +315,13 @@ def fixup_flagged_fields(
     unrecognized types, encoding issues) to an LLM to fix, using nearby
     source-row context.
 
-    CONFIRMATION REQUIRED: tell the user which source columns will be sent
-    as LLM context (derive this from the lint records' source_row keys,
-    filtered to what the format mapping actually uses) and let them exclude
-    any columns (e.g. for PII) via excluded_columns before calling this —
-    do not call this tool without having done that first.
+    USER APPROVAL REQUIRED: this sends the user's data to an LLM. If your
+    client already asks the user to approve tool calls, don't also ask in
+    text; otherwise ask first and wait for the answer. Either way, tell the
+    user which source columns will be sent as LLM context (derive this from
+    the lint records' source_row keys, filtered to what the format mapping
+    actually uses) and which you are leaving out through excluded_columns
+    (e.g. for PII), so they can correct the choice.
 
     Resumable: safe to retry after a failure, re-run with the same
     checkpoint_path to pick up where it left off rather than starting over.
@@ -379,8 +381,9 @@ def merge_vlmd(
     """Merge any LLM fixes onto the converted fields and write the final
     VLMD output (.vlmd.json, .vlmd.csv, metadata.yaml) to output_dir.
 
-    CONFIRMATION REQUIRED: this is the final write — confirm with the user
-    before calling it, same as fixup_flagged_fields.
+    USER APPROVAL REQUIRED: this is the final write. Same rule as
+    fixup_flagged_fields: if your client already asks the user to approve tool
+    calls, don't also ask in text; otherwise ask first and wait.
 
     Always re-validates the final merged document. valid=False in the
     return means the final document is NOT schema-valid even though files
