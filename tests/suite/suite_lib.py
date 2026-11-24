@@ -30,7 +30,9 @@ def load_failure_modes() -> dict[str, str]:
 
 
 def fixture_path(case: dict) -> Path:
-    return SUITE_DIR / "fixtures" / case["id"] / case["fixture"]
+    """Fixture file of a case; `fixture_dir` lets several cases share one excerpt (for
+    example one workbook, one case per sheet)."""
+    return SUITE_DIR / "fixtures" / case.get("fixture_dir", case["id"]) / case["fixture"]
 
 
 def run_offline(case: dict, work: Path) -> dict:
@@ -100,6 +102,12 @@ def check_field(name: str, want: dict, field: dict | None) -> list[str]:
         got = (field.get("enumLabels") or {}).get(value)
         if got != label:
             errs.append(f"field {name!r}: enumLabels[{value!r}] is {got!r}, expected {label!r}")
+    for text in want.get("absent_text", []):
+        if text in blob:
+            errs.append(f"field {name!r}: contains {text!r}")
+    for key in want.get("custom_lacks", []):
+        if key in (field.get("custom") or {}):
+            errs.append(f"field {name!r}: {key!r} was put in custom instead of being mapped")
     if want.get("no_html") and HTML_TAG.search(field.get("description") or ""):
         errs.append(f"field {name!r}: HTML left in description")
     if want.get("description_nonempty") and not (field.get("description") or "").strip():
@@ -110,7 +118,18 @@ def check_field(name: str, want: dict, field: dict | None) -> list[str]:
 def check_ids(case: dict) -> list[str]:
     """One id per assertion in case['expect'], so each can pass, fail or xfail on its own."""
     want = case.get("expect", {})
-    ids = [k for k in ("format", "rows_in", "fields_out", "schema_valid") if k in want]
+    ids = [
+        k
+        for k in (
+            "format",
+            "rows_in",
+            "columns_include",
+            "fields_out",
+            "names_present",
+            "schema_valid",
+        )
+        if k in want
+    ]
     ids += [f"flagged:{n}" for n in want.get("flagged", [])]
     ids += [f"not_flagged:{n}" for n in want.get("not_flagged", [])]
     ids += [f"field:{n}" for n in (want.get("fields") or {})]
@@ -138,6 +157,12 @@ def check_one(case: dict, run: dict, check_id: str) -> list[str]:
             else [f"saw {got} rows, expected {want['rows_in']}"]
         )
 
+    if kind == "columns_include":
+        missing = [c for c in want["columns_include"] if c not in (det.get("columns") or [])]
+        return (
+            [f"header lacks {missing}; read as {(det.get('columns') or [])[:4]}"] if missing else []
+        )
+
     fields = run.get("fields")
     if fields is None:
         return [f"no fields produced (convert_rc={run.get('convert_rc')})"]
@@ -148,6 +173,10 @@ def check_one(case: dict, run: dict, check_id: str) -> list[str]:
             if _expected_count(want["fields_out"], got)
             else [f"{got} fields out, expected {want['fields_out']}"]
         )
+    if kind == "names_present":
+        have = {f.get("name") for f in fields}
+        missing = [n for n in want["names_present"] if n not in have]
+        return [f"names missing from output: {missing}"] if missing else []
     if kind == "schema_valid":
         ok = run.get("lint_rc") == 0
         return [] if ok == want["schema_valid"] else [f"validation rc={run.get('lint_rc')}"]

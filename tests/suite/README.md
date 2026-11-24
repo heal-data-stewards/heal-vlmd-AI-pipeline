@@ -49,26 +49,46 @@ An excerpt can't reproduce behavior that depends on the size of the original. Sh
 | `redcap-empty-descriptions/input.csv` | `redcap-detect`, `empty-description`, `short-description`, `calc`, `count-parity` | REDCap fields with an empty label, a one-character label that only repeats a number, and calc fields with very short labels. Missing and unusable descriptions must be flagged for review, never filled in. | 2 of 15 checks xfail |
 | `redcap-named-qualtrics/input.xlsx` | `mislabelled-format`, `redcap-detect`, `count-parity` | Workbook from a study that calls it a "Qualtrics data dictionary": the master sheet has the REDCap column layout but `Variable Name` instead of `Variable / Field Name`, and `string` as the field type. The format must be decided by the columns, not the file name. | 2 of 4 checks xfail |
 | `redcap-messy-workbook/input.xlsx` | `redcap-detect`, `enum-variants`, `count-parity` | Workbook with a REDCap-derived dictionary that has only some of the REDCap columns (no `Field Type`, four empty trailing columns), choices written as `1: Male \| 2: Female`, plus a comparison sheet, a hidden sheet and a leftover empty sheet. The sheet is pinned because the excerpt changes which sheet is "largest". | 4 of 5 checks xfail |
+| `ndar-single-sheet/input.xlsx` | `ndar-detect` | One NDAR data-structure sheet (ElementName, DataType, Size, Required, ElementDescription, ValueRange, Notes, Aliases). | 2 of 3 checks xfail |
+| `ndar-multi-sheet/input.xlsx` | `ndar-detect`, `multi-sheet` | Workbook with one NDAR data structure per sheet (this entry: ndar_subject01; the next entry reuses the workbook for phq01). Each sheet must be converted as its own instrument. | 2 of 3 checks xfail |
+| `ndar-multi-sheet-phq/input.xlsx` | `ndar-detect`, `multi-sheet` | The phq01 sheet of the same workbook as ndar-multi-sheet. | 2 of 3 checks xfail |
+| `ndar-flat-duplicates/input.xlsx` | `ndar-detect`, `duplicate-names` | One flat sheet holding several NDAR instruments (an Instrument column); `subjectkey` and `src_subject_id` occur once per instrument, so names repeat across instruments. | 3 of 4 checks xfail |
+| `ndar-csv/input.csv` | `ndar-detect` | An NDAR data structure exported as CSV (same columns as the workbook form). | 2 of 3 checks xfail |
+| `cdisc-flat-csv/input.csv` | `generic-fallback` | CDISC Define-XML flattened to CSV (dataset, domain, name, codelist columns); STUDYID, USUBJID and EXTRT repeat in every dataset. | passing |
+| `header-offset/input.xlsx` | `header-offset` | eClinical form sheet whose header is on row 5, under a title row and blank rows; most descriptions below it are empty. | 1 of 1 checks xfail |
+| `prose-first-sheet/input.xlsx` | `prose-sheet`, `not-a-dictionary` | The notes sheet of a workbook, a paragraph of prose in the first cell and a short list of system variables; the real dictionary is on another sheet. It must not be taken for a known format. | passing |
+| `custom-layout-dataset-variable/input.xlsx` | `generic-fallback` | The dictionary sheet of that workbook: Dataset Name, Variable Name, Description, Data Format and two value columns, with value codes also written into some descriptions. | passing |
+| `icpsr-codebook/input.xlsx` | `generic-fallback` | ICPSR-style codebook sheet (FIELD NAME, FIELD LABEL, DESCRIPTION, SUBFIELD, DATA TYPE/FORMAT, DATA CODES). | 1 of 3 checks xfail |
+| `different-columns-per-sheet/input.xlsx` | `generic-fallback`, `multi-sheet` | Codebook workbook whose sheets have different columns: Question Items (Qualtrics item names, SAS and HPC variable names, values) and Constructed Variables (this entry: the first). | passing |
+| `different-columns-per-sheet-constructed/input.xlsx` | `generic-fallback`, `multi-sheet` | The Constructed Variables sheet of the same workbook. | passing |
+| `wide-custom-columns/input.csv` | `custom-columns`, `odd-names`, `count-parity` | Study-specific layout with 17 columns (sample response, spreadsheet column number, domain, derivation, sensitive-data flag, ...) and names containing dots (`coded.linkage`, `DOC.coded`). Extra columns must be kept under `custom` and names left exactly as written. | passing |
+| `already-heal-csv/input.csv` | `already-heal`, `odd-names` | HEAL VLMD CSV (columns such as constraints.enum and schemaVersion). Names contain spaces and a percent sign (`mouse id`, `% withdrawal`). It should pass through with every HEAL column mapped to its schema property. | 1 of 4 checks xfail |
+| `heal-template/input.csv` | `already-heal` | The HEAL CSV submission template with example rows (module, name, constraints.*, encodings). | 1 of 3 checks xfail |
+| `tab-delimited/input.tab` | `delimiter` | A HEAL-layout dictionary saved tab-separated with a .tab extension. | 1 of 1 checks xfail |
+| `latin1-encoding/input.csv` | `encoding` | CDE-layout CSV saved in Mac Roman (not UTF-8): curly quotes, an em dash and a non-breaking space are single high bytes. Decoded as Latin-1 they become `Ò`, `Ó`, `Ñ`, `Ê`. | 4 of 6 checks xfail |
+| `not-dict-mapping/input.xlsx` | `not-a-dictionary` | A New/Old column-name mapping sheet, not a data dictionary. | passing |
+| `not-dict-data-file/input.csv` | `not-a-dictionary` | Rows of research data (Group, Rat_ID, Condition, Value) submitted in place of a dictionary. | passing |
+| `pdf-qualtrics-codebook/input.pdf` | `pdf` | Two pages of a Qualtrics-style PDF codebook (text layer; variable names in capitals followed by question text and numbered choices). | tier: llm |
 
 ### Failure modes
 
 | Id | Meaning | Fixtures |
 |---|---|---|
 | `redcap-detect` | REDCap export recognised as REDCap and converted as such | `synthetic-redcap-types`, `redcap-slider-minimal`, `redcap-html-checkbox`, `redcap-slider-formats-a`, `redcap-slider-formats-b`, `redcap-all-types`, `redcap-empty-descriptions`, `redcap-named-qualtrics`, `redcap-messy-workbook` |
-| `ndar-detect` | NDAR data structure recognised and converted with the NDAR rules | **not covered yet** |
+| `ndar-detect` | NDAR data structure recognised and converted with the NDAR rules | `ndar-single-sheet`, `ndar-multi-sheet`, `ndar-multi-sheet-phq`, `ndar-flat-duplicates`, `ndar-csv` |
 | `qualtrics-detect` | Native Qualtrics export recognised as Qualtrics | **not covered yet** |
 | `mislabelled-format` | File name or sheet name suggests one format, the columns are another | `redcap-named-qualtrics` |
-| `already-heal` | Already a HEAL VLMD file; should pass through unchanged | **not covered yet** |
-| `not-a-dictionary` | Not a data dictionary at all; should be rejected cleanly | **not covered yet** |
+| `already-heal` | Already a HEAL VLMD file; should pass through unchanged | `already-heal-csv`, `heal-template` |
+| `not-a-dictionary` | Not a data dictionary at all; should be rejected cleanly | `prose-first-sheet`, `not-dict-mapping`, `not-dict-data-file` |
 | `ambiguous-format` | Columns match several formats; confidence should be reported as low | **not covered yet** |
-| `generic-fallback` | No known format; falls back to the generic or LLM-proposed mapping | **not covered yet** |
-| `pdf` | PDF codebook (text layer, tables split across pages) | **not covered yet** |
-| `multi-sheet` | One workbook, many sheets (one per instrument or aim) | **not covered yet** |
+| `generic-fallback` | No known format; falls back to the generic or LLM-proposed mapping | `cdisc-flat-csv`, `custom-layout-dataset-variable`, `icpsr-codebook`, `different-columns-per-sheet`, `different-columns-per-sheet-constructed` |
+| `pdf` | PDF codebook (text layer, tables split across pages) | `pdf-qualtrics-codebook` |
+| `multi-sheet` | One workbook, many sheets (one per instrument or aim) | `ndar-multi-sheet`, `ndar-multi-sheet-phq`, `different-columns-per-sheet`, `different-columns-per-sheet-constructed` |
 | `hidden-sheet` | Hidden, stray or empty sheets next to the real dictionary | **not covered yet** |
-| `prose-sheet` | A sheet of notes or prose instead of a table | **not covered yet** |
-| `header-offset` | Header row is not row 1 (title rows, blank leading rows) | **not covered yet** |
-| `delimiter` | Tab- or semicolon-separated input | **not covered yet** |
-| `encoding` | Latin-1, BOM or mojibake | **not covered yet** |
+| `prose-sheet` | A sheet of notes or prose instead of a table | `prose-first-sheet` |
+| `header-offset` | Header row is not row 1 (title rows, blank leading rows) | `header-offset` |
+| `delimiter` | Tab- or semicolon-separated input | `tab-delimited` |
+| `encoding` | Latin-1, BOM or mojibake | `latin1-encoding` |
 | `multi-file` | One dictionary split over several files | **not covered yet** |
 | `duplicate-versions` | Several near-identical versions of the same dictionary | **not covered yet** |
 | `transposed` | Variables run across columns instead of down rows | **not covered yet** |
@@ -89,11 +109,11 @@ An excerpt can't reproduce behavior that depends on the size of the original. Sh
 | `missing-codes` | Codes like -9, 999, NA mixed in with real values | **not covered yet** |
 | `type-mismatch` | Declared type disagrees with the values or the validation column | **not covered yet** |
 | `date-format` | Date or time format strings | **not covered yet** |
-| `duplicate-names` | Same variable name repeated within or across sheets | **not covered yet** |
-| `bad-names` | Names that break the schema name pattern | **not covered yet** |
-| `custom-columns` | Extra columns that must be kept under `custom` | **not covered yet** |
+| `duplicate-names` | Same variable name repeated within or across sheets | `ndar-flat-duplicates` |
+| `odd-names` | Names with dots, spaces or other unusual characters (the schema sets no name pattern, so they must pass through unchanged) | `wide-custom-columns`, `already-heal-csv` |
+| `custom-columns` | Extra columns that must be kept under `custom` | `wide-custom-columns` |
 | `section-rows` | Section headers mixed in with variable rows | **not covered yet** |
-| `count-parity` | Number of fields out matches the number of variables in | `synthetic-redcap-types`, `redcap-slider-minimal`, `redcap-html-checkbox`, `redcap-slider-formats-a`, `redcap-slider-formats-b`, `redcap-all-types`, `redcap-empty-descriptions`, `redcap-named-qualtrics`, `redcap-messy-workbook` |
+| `count-parity` | Number of fields out matches the number of variables in | `synthetic-redcap-types`, `redcap-slider-minimal`, `redcap-html-checkbox`, `redcap-slider-formats-a`, `redcap-slider-formats-b`, `redcap-all-types`, `redcap-empty-descriptions`, `redcap-named-qualtrics`, `redcap-messy-workbook`, `wide-custom-columns` |
 | `prompt-injection` | Instructions hidden in a description | **not covered yet** |
 | `partial-valid` | One bad row must not stop the rest being converted | **not covered yet** |
 
@@ -133,4 +153,24 @@ An excerpt can't reproduce behavior that depends on the size of the original. Sh
 - `redcap-messy-workbook::fields_out`: not converted because the format is not detected
 - `redcap-messy-workbook::schema_valid`: not converted because the format is not detected
 - `redcap-messy-workbook::field:SEX`: not converted because the format is not detected
+- `ndar-single-sheet::format`: NDAR data structures are not supported on main (vlmd_ndar.py is on the ndar-conversion branch); detection reports unknown
+- `ndar-single-sheet::schema_valid`: no fields are produced because the format is not detected
+- `ndar-multi-sheet::format`: NDAR data structures are not supported on main (vlmd_ndar.py is on the ndar-conversion branch); detection reports unknown
+- `ndar-multi-sheet::schema_valid`: no fields are produced because the format is not detected
+- `ndar-multi-sheet-phq::format`: NDAR data structures are not supported on main (vlmd_ndar.py is on the ndar-conversion branch); detection reports unknown
+- `ndar-multi-sheet-phq::schema_valid`: no fields are produced because the format is not detected
+- `ndar-flat-duplicates::format`: NDAR data structures are not supported on main (vlmd_ndar.py is on the ndar-conversion branch); detection reports unknown
+- `ndar-flat-duplicates::names_present`: no fields are produced because the format is not detected
+- `ndar-flat-duplicates::schema_valid`: no fields are produced because the format is not detected
+- `ndar-csv::format`: NDAR data structures are not supported on main (vlmd_ndar.py is on the ndar-conversion branch); detection reports unknown
+- `ndar-csv::schema_valid`: no fields are produced because the format is not detected
+- `header-offset::columns_include`: the first row (a form title) is read as the header; the real header is on row 5
+- `icpsr-codebook::rows_in`: detect counts physical lines, so cells with line breaks inflate row_count
+- `already-heal-csv::field:model`: HEAL columns (schemaVersion, constraints.enum) are copied into custom instead of being mapped
+- `heal-template::field:race`: constraints.enum and encodings are copied into custom instead of being mapped
+- `tab-delimited::columns_include`: only comma is tried as a delimiter; the whole header is read as one column
+- `latin1-encoding::rows_in`: detect counts physical lines, so cells with line breaks inflate row_count
+- `latin1-encoding::field:empstat_2___1`: the file is decoded as Latin-1, so a Mac Roman non-breaking space becomes Ê
+- `latin1-encoding::field:PSEQworkScl`: the file is decoded as Latin-1, so Mac Roman curly quotes become Ò and Ó
+- `latin1-encoding::field:PHQFlngFailrScore`: the file is decoded as Latin-1, so a Mac Roman em dash becomes Ñ
 <!-- END GENERATED -->

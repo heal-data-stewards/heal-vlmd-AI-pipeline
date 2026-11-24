@@ -127,6 +127,8 @@ def extract_xlsx(src: Path, dest: Path, args: dict) -> None:
     out.remove(out.active)
     wanted = args.get("sheets") or wb.sheetnames
     for name in wanted:
+        if name not in wb.sheetnames:
+            sys.exit(f"no sheet {name!r} in {src.name}; sheets are: {wb.sheetnames}")
         ws = wb[name]
         rows = [["" if c is None else str(c) for c in r] for r in ws.iter_rows(values_only=True)]
         new = out.create_sheet(name)
@@ -149,16 +151,16 @@ def extract_pdf(src: Path, dest: Path, args: dict) -> None:
 def build(case_id: str, source: Path, args: dict) -> Path:
     suffix = source.suffix.lower()
     dest_dir = suite_lib.SUITE_DIR / "fixtures" / case_id
-    dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / ("input" + suffix)
+    if suffix not in (".csv", ".tab", ".xlsx", ".pdf"):
+        sys.exit(f"don't know how to excerpt a {suffix} file")
+    dest_dir.mkdir(parents=True, exist_ok=True)
     if suffix in (".csv", ".tab"):
         extract_delimited(source, dest, args)
     elif suffix == ".xlsx":
         extract_xlsx(source, dest, args)
     elif suffix == ".pdf":
         extract_pdf(source, dest, args)
-    else:
-        sys.exit(f"don't know how to excerpt a {suffix} file")
     return dest
 
 

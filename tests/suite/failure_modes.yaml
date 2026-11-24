@@ -42,7 +42,7 @@ type:
   date-format: Date or time format strings
 names:
   duplicate-names: Same variable name repeated within or across sheets
-  bad-names: Names that break the schema name pattern
+  odd-names: Names with dots, spaces or other unusual characters (the schema sets no name pattern, so they must pass through unchanged)
   custom-columns: Extra columns that must be kept under `custom`
   section-rows: Section headers mixed in with variable rows
 robustness:
