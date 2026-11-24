@@ -111,7 +111,7 @@ Agents (Claude Code, Copilot and others) follow the same workflow, plus these ru
 
 ## Repository setup
 
-What is configured, so it can be checked or recreated. Settings live in GitHub, not in the repository, so changes to them should be recorded here.
+What is configured, so it can be checked or recreated. Settings live in GitHub, not in the repository, so record changes to them here and in `.github/scripts/apply_repo_settings.sh`, which applies them (it needs repository admin and is safe to re-run).
 
 | Setting | Value | Where |
 |---|---|---|
