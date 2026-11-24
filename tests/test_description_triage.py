@@ -10,6 +10,7 @@ import json
 import pytest
 
 import vlmd_description_triage
+from vlmd_description_triage import Decision
 
 
 def candidates(*names):
@@ -28,7 +29,7 @@ def reply_with(monkeypatch, *texts):
     return prompts
 
 
-def entry(name, decision="leave_as_is"):
+def entry(name, decision=Decision.LEAVE_AS_IS):
     return {"name": name, "decision": decision, "justification": "ok"}
 
 
@@ -43,11 +44,19 @@ def test_valid_reply_is_returned(monkeypatch, tmp_path):
     results = vlmd_description_triage.triage(
         candidates("a", "b"), "test-model", checkpoint_path=str(checkpoint)
     )
-    assert results["a"]["decision"] == "leave_as_is"
-    assert results["b"]["decision"] == "flag_for_human"
+    assert results["a"]["decision"] == Decision.LEAVE_AS_IS
+    assert results["b"]["decision"] == Decision.FLAG_FOR_HUMAN
     assert not any(r.get("triage_failed") for r in results.values())
     assert len(prompts) == 1
     assert checkpoint.exists()
+
+
+@pytest.mark.parametrize("decision", ["maybe", "", None, ["leave_as_is"], {"x": 1}, 1])
+def test_unknown_decision_becomes_flag_for_human(monkeypatch, decision):
+    reply_with(monkeypatch, json.dumps([{"name": "a", "decision": decision}]))
+    results = vlmd_description_triage.triage(candidates("a"), "test-model")
+    assert results["a"]["decision"] == Decision.FLAG_FOR_HUMAN
+    assert not results["a"].get("triage_failed")
 
 
 def test_entries_for_fields_not_in_the_chunk_are_dropped(monkeypatch, tmp_path):
@@ -89,7 +98,7 @@ def test_unusable_reply_flags_chunk_for_human(monkeypatch, tmp_path, text):
         candidates("a", "b"), "test-model", checkpoint_path=str(checkpoint)
     )
     assert set(results) == {"a", "b"}
-    assert {r["decision"] for r in results.values()} == {"flag_for_human"}
+    assert {r["decision"] for r in results.values()} == {Decision.FLAG_FOR_HUMAN}
     assert all(r["triage_failed"] for r in results.values())
     assert len(prompts) == 2
     assert not checkpoint.exists()
@@ -101,27 +110,29 @@ def test_retry_can_recover_a_malformed_reply(monkeypatch, tmp_path):
     results = vlmd_description_triage.triage(
         candidates("a", "b"), "test-model", checkpoint_path=str(checkpoint)
     )
-    assert {r["decision"] for r in results.values()} == {"leave_as_is"}
+    assert {r["decision"] for r in results.values()} == {Decision.LEAVE_AS_IS}
     assert "IMPORTANT" in prompts[1]
     assert checkpoint.exists()
 
 
 def test_partial_reply_keeps_usable_entries_and_is_not_checkpointed(monkeypatch, tmp_path):
-    reply_with(monkeypatch, json.dumps(["junk", entry("a", "send_to_llm")]), "[]")
+    reply_with(monkeypatch, json.dumps(["junk", entry("a", Decision.SEND_TO_LLM)]), "[]")
     checkpoint = tmp_path / "checkpoint.json"
     results = vlmd_description_triage.triage(
         candidates("a", "b"), "test-model", checkpoint_path=str(checkpoint)
     )
-    assert results["a"] == entry("a", "send_to_llm")
-    assert results["b"]["decision"] == "flag_for_human"
+    assert results["a"] == entry("a", Decision.SEND_TO_LLM)
+    assert results["b"]["decision"] == Decision.FLAG_FOR_HUMAN
     assert results["b"]["triage_failed"] is True
     assert not checkpoint.exists()
 
 
 def test_retry_fills_gaps_in_a_partial_reply(monkeypatch):
-    reply_with(monkeypatch, json.dumps([entry("a", "send_to_llm")]), json.dumps([entry("b")]))
+    reply_with(
+        monkeypatch, json.dumps([entry("a", Decision.SEND_TO_LLM)]), json.dumps([entry("b")])
+    )
     results = vlmd_description_triage.triage(candidates("a", "b"), "test-model")
-    assert results == {"a": entry("a", "send_to_llm"), "b": entry("b")}
+    assert results == {"a": entry("a", Decision.SEND_TO_LLM), "b": entry("b")}
 
 
 def test_retry_asks_only_about_missing_fields(monkeypatch):
@@ -135,11 +146,11 @@ def test_retry_does_not_replace_entries_from_the_first_reply(monkeypatch):
     # "maybe" would become flag_for_human and replace the valid send_to_llm.
     reply_with(
         monkeypatch,
-        json.dumps([entry("a", "send_to_llm")]),
+        json.dumps([entry("a", Decision.SEND_TO_LLM)]),
         json.dumps([entry("a", "maybe"), entry("b")]),
     )
     results = vlmd_description_triage.triage(candidates("a", "b"), "test-model")
-    assert results == {"a": entry("a", "send_to_llm"), "b": entry("b")}
+    assert results == {"a": entry("a", Decision.SEND_TO_LLM), "b": entry("b")}
 
 
 def test_retry_allows_a_longer_reply(monkeypatch):
@@ -167,14 +178,14 @@ def test_reply_with_no_content_is_treated_as_unusable(monkeypatch, tmp_path):
 
     call_results(
         monkeypatch,
-        (json.dumps([entry("a", "send_to_llm")]), True, ""),
+        (json.dumps([entry("a", Decision.SEND_TO_LLM)]), True, ""),
         ("", False, f"{NO_CONTENT_ERROR} (finish_reason=content_filter)"),
     )
     checkpoint = tmp_path / "checkpoint.json"
     results = vlmd_description_triage.triage(
         candidates("a", "b"), "test-model", checkpoint_path=str(checkpoint)
     )
-    assert results["a"] == entry("a", "send_to_llm")
+    assert results["a"] == entry("a", Decision.SEND_TO_LLM)
     assert results["b"]["triage_failed"] is True
     assert not checkpoint.exists()
 
@@ -209,11 +220,11 @@ def test_complete_checkpoint_is_reused(monkeypatch, tmp_path):
 def test_partial_checkpoint_is_asked_again(monkeypatch, tmp_path):
     checkpoint = tmp_path / "checkpoint.json"
     write_checkpoint(checkpoint, [entry("a")])
-    prompts = reply_with(monkeypatch, json.dumps([entry("a"), entry("b", "send_to_llm")]))
+    prompts = reply_with(monkeypatch, json.dumps([entry("a"), entry("b", Decision.SEND_TO_LLM)]))
     results = vlmd_description_triage.triage(
         candidates("a", "b"), "test-model", checkpoint_path=str(checkpoint)
     )
-    assert results["b"]["decision"] == "send_to_llm"
+    assert results["b"]["decision"] == Decision.SEND_TO_LLM
     assert len(prompts) == 1
 
 

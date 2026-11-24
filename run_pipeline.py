@@ -35,7 +35,6 @@ def _derive_name(input_file: str) -> str:
 
 
 DESCRIPTION_REVIEW_ISSUE = "description_too_short"
-_SUGGESTION_PRIORITY = {"flag_for_human": 0, "send_to_llm": 1, "leave_as_is": 2}
 
 
 def _apply_description_review_gate(
@@ -66,10 +65,21 @@ def _apply_description_review_gate(
     if not candidates:
         return convert_lint_records, None
 
+    # Imported here, like every stage, because it imports llm_client. The gate runs only
+    # when LLM fixup will run, so this costs nothing extra.
+    from vlmd_description_triage import HUMAN_DECISIONS, Decision, triage
+
+    # The review file lists flag_for_human first (needs the most attention), then
+    # send_to_llm, then leave_as_is.
+    review_order = {
+        d: i
+        for i, d in enumerate((Decision.FLAG_FOR_HUMAN, Decision.SEND_TO_LLM, Decision.LEAVE_AS_IS))
+    }
+
     decisions: dict[str, dict] = {}
     if decisions_path and Path(decisions_path).exists():
         for d in json.loads(Path(decisions_path).read_text(encoding="utf-8")):
-            if d.get("decision") in ("send_to_llm", "leave_as_is"):
+            if d.get("decision") in HUMAN_DECISIONS:
                 decisions[d["name"]] = {
                     "decision": d["decision"],
                     "justification": d.get("justification", ""),
@@ -82,7 +92,7 @@ def _apply_description_review_gate(
         # rather than spending LLM calls on triage no one will review.
         for r in undecided:
             decisions[r["name"]] = {
-                "decision": "leave_as_is",
+                "decision": Decision.LEAVE_AS_IS,
                 "justification": "--yes: not reviewed",
             }
         print(
@@ -96,8 +106,6 @@ def _apply_description_review_gate(
     review_path = work_subdir / "vlmd_description_review.json"
 
     if undecided:
-        from vlmd_description_triage import triage
-
         print(
             f"\n  Running LLM triage on {len(undecided)} short/placeholder description(s) "
             "to suggest which need a rewrite ...",
@@ -106,11 +114,10 @@ def _apply_description_review_gate(
         triage_checkpoint = str(work_subdir / "vlmd_description_triage.checkpoint.json")
         suggestions = triage(undecided, model, checkpoint_path=triage_checkpoint)
 
-        # flag_for_human sorts first (needs the most attention), then send_to_llm,
-        # then leave_as_is — and flag_for_human's "decision" is left blank rather
-        # than pre-filled, since there is no confident suggestion to accept or reject.
+        # flag_for_human's "decision" is left blank rather than pre-filled, since
+        # there is no confident suggestion to accept or reject.
         scored: list[tuple[int, dict]] = []
-        counts = {"flag_for_human": 0, "send_to_llm": 0, "leave_as_is": 0}
+        counts = dict.fromkeys(Decision, 0)
         triage_failed = 0
         for r in candidates:
             failed = False
@@ -120,7 +127,7 @@ def _apply_description_review_gate(
                 justification = d["justification"]
             else:
                 s = suggestions.get(r["name"], {})
-                suggested = s.get("decision") or "flag_for_human"
+                suggested = s.get("decision") or Decision.FLAG_FOR_HUMAN
                 justification = s.get("justification", "")
                 counts[suggested] = counts.get(suggested, 0) + 1
                 failed = bool(s.get("triage_failed"))
@@ -129,14 +136,14 @@ def _apply_description_review_gate(
                 "name": r["name"],
                 "description": r["vlmd_field_draft"].get("description", ""),
                 "section": r["vlmd_field_draft"].get("section", ""),
-                "decision": "" if suggested == "flag_for_human" else suggested,
+                "decision": "" if suggested == Decision.FLAG_FOR_HUMAN else suggested,
                 "justification": justification,
             }
             if failed:
                 # Machine-readable: tells a field the LLM couldn't triage apart from
                 # one it chose to flag. Loading the decisions file ignores this key.
                 entry["triage_failed"] = True
-            scored.append((_SUGGESTION_PRIORITY.get(suggested, 0), entry))
+            scored.append((review_order.get(suggested, 0), entry))
 
         scored.sort(key=lambda pair: pair[0])
         review_payload = [entry for _, entry in scored]
@@ -146,9 +153,9 @@ def _apply_description_review_gate(
 
         print(
             f"\n  {len(undecided)} field(s) triaged — "
-            f"{counts['flag_for_human']} flagged for human input, "
-            f"{counts['send_to_llm']} suggested send_to_llm, "
-            f"{counts['leave_as_is']} suggested leave_as_is.",
+            f"{counts[Decision.FLAG_FOR_HUMAN]} flagged for human input, "
+            f"{counts[Decision.SEND_TO_LLM]} suggested send_to_llm, "
+            f"{counts[Decision.LEAVE_AS_IS]} suggested leave_as_is.",
             flush=True,
         )
         if triage_failed:
@@ -179,7 +186,7 @@ def _apply_description_review_gate(
     # All decided — record the final decisions and strip declined ones from the lint report
     scored = [
         (
-            _SUGGESTION_PRIORITY.get(decisions[r["name"]]["decision"], 0),
+            review_order.get(decisions[r["name"]]["decision"], 0),
             {
                 "name": r["name"],
                 "description": r["vlmd_field_draft"].get("description", ""),
@@ -198,7 +205,7 @@ def _apply_description_review_gate(
 
     for r in convert_lint_records:
         if (
-            decisions.get(r["name"], {}).get("decision") == "leave_as_is"
+            decisions.get(r["name"], {}).get("decision") == Decision.LEAVE_AS_IS
             and DESCRIPTION_REVIEW_ISSUE in r["issues"]
         ):
             r["issues"] = [i for i in r["issues"] if i != DESCRIPTION_REVIEW_ISSUE]
@@ -208,8 +215,8 @@ def _apply_description_review_gate(
         json.dumps(filtered, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
-    kept = sum(1 for r in candidates if decisions[r["name"]]["decision"] == "send_to_llm")
-    dropped = sum(1 for r in candidates if decisions[r["name"]]["decision"] == "leave_as_is")
+    kept = sum(1 for r in candidates if decisions[r["name"]]["decision"] == Decision.SEND_TO_LLM)
+    dropped = sum(1 for r in candidates if decisions[r["name"]]["decision"] == Decision.LEAVE_AS_IS)
     print(
         f"  Description review: {kept} sent to LLM, {dropped} left as-is "
         f"(decisions in {review_path})",
