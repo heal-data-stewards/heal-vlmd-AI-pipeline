@@ -1,0 +1,11 @@
+.venv
+.env
+.git
+work/
+output/
+examples/output/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.idea/
