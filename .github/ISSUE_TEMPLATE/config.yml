@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Development workflow
+    url: https://github.com/heal-data-stewards/heal-vlmd-AI-pipeline/blob/main/DEVELOPMENT.md
+    about: How issues, branches, pull requests and the board fit together.

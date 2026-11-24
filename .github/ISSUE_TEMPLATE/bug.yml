@@ -1,0 +1,39 @@
+name: Bug
+description: Something the pipeline does wrong.
+type: Bug
+projects: ["heal-data-stewards/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Don't paste or attach a study's data or data dictionary unless it is cleared for sharing. Refer to it by HDP ID instead.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What went wrong, and why it matters. Link related issues as `org/repo#N`.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The command you ran, the input (by HDP ID or a synthetic example), the exit code, and the commit or branch.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist the fix can be checked against.
+      value: |
+        - [ ] 
+    validations:
+      required: true

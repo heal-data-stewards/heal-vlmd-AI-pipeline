@@ -1,0 +1,26 @@
+name: Feature
+description: New behaviour for the pipeline or the MCP server.
+type: Feature
+projects: ["heal-data-stewards/1"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: The problem this solves and why it matters now. Link related issues as `org/repo#N`, Slack threads, or study HDP IDs (never the data itself).
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should change. Name the files, stages or tools involved if you know them, and any decisions already made.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist someone else, or an agent, can check the finished work against. Add the `agent-ready` label once these are complete and no questions are open.
+      value: |
+        - [ ] 
+    validations:
+      required: true

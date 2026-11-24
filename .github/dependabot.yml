@@ -1,0 +1,21 @@
+# Weekly dependency updates, grouped into one pull request per ecosystem.
+# Dependabot's pull requests are exempt from the linked-issue check.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns: ["*"]
+    ignore:
+      # Ruff is bumped by hand: see "Bump Ruff deliberately" in CONTRIBUTING.md.
+      - dependency-name: ruff
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

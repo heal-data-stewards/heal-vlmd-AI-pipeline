@@ -1,0 +1,21 @@
+name: Task
+description: Work that isn't a bug or a feature, such as docs, CI, refactoring or setup.
+type: Task
+projects: ["heal-data-stewards/1"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What needs doing and why. Link related issues as `org/repo#N`.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist the finished work can be checked against.
+      value: |
+        - [ ] 
+    validations:
+      required: true

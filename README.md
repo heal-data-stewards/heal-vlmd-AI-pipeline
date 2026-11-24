@@ -652,6 +652,8 @@ python run_pipeline.py \
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setting up a development environment, running the tests, linting and formatting with Ruff, and what a pull request needs before review. GitHub Actions (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check` and `pytest` on every pull request.
 
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the development workflow: issues and the project board, branch naming, linked issues, and review and merge.
+
 ---
 
 ## Bot / API integration
