@@ -6,6 +6,7 @@ supported data dictionary format to VLMD fields JSON.
 Replaces hbcd_convert.py — run with --format formats/hbcd.yaml to get
 identical output.
 """
+
 import argparse
 import json
 import re
@@ -34,6 +35,7 @@ def _detect_encoding(file_path: str) -> str:
 
 # ── Label cleaning strategies ────────────────────────────────────────────────
 
+
 def _strip_outer_quotes(s: str) -> str:
     """Remove one layer of outer escaped double-quotes from a label string."""
     s = s.strip()
@@ -53,8 +55,10 @@ LABEL_CLEANERS = {
 
 # ── Levels parsers ───────────────────────────────────────────────────────────
 
-def _parse_json_array(raw: str, value_key: str, label_key: str,
-                      cleaner) -> tuple[list[str], dict[str, str]]:
+
+def _parse_json_array(
+    raw: str, value_key: str, label_key: str, cleaner
+) -> tuple[list[str], dict[str, str]]:
     if not raw or raw.strip() in ("", "[]", "nan"):
         return [], {}
     try:
@@ -85,8 +89,9 @@ def _strip_wrapping_quotes(s: str) -> str:
     return s
 
 
-def _parse_pipe_separated(raw: str, pair_sep: str,
-                           choice_sep: str) -> tuple[list[str], dict[str, str]]:
+def _parse_pipe_separated(
+    raw: str, pair_sep: str, choice_sep: str
+) -> tuple[list[str], dict[str, str]]:
     if not raw or raw.strip() in ("", "nan"):
         return [], {}
     enum_values = []
@@ -170,6 +175,7 @@ def parse_levels(raw: str, levels_spec: dict | None) -> tuple[list[str], dict[st
 
 # ── Column resolution helpers ────────────────────────────────────────────────
 
+
 def resolve_column_spec(spec: Any, df_columns: set[str]) -> str | dict | None:
     """Resolve a column spec to an actual column name (or combine descriptor).
 
@@ -235,6 +241,7 @@ def get_val(row: dict, col: str | dict | None) -> str:
 
 # ── Stata reader ──────────────────────────────────────────────────────────────
 
+
 def read_stata(file_path: str) -> pd.DataFrame:
     try:
         import pyreadstat
@@ -262,6 +269,7 @@ def read_stata(file_path: str) -> pd.DataFrame:
 
 
 # ── Row converter ─────────────────────────────────────────────────────────────
+
 
 def row_to_vlmd_field(row: dict, spec: dict, resolved_cols: dict) -> dict:
     """Convert one row dict to a VLMD field dict using pre-resolved column names."""
@@ -339,7 +347,11 @@ def row_to_vlmd_field(row: dict, spec: dict, resolved_cols: dict) -> dict:
         levels_source = raw_levels
         if spec.get("levels", {}).get("format") == "stata_value_labels":
             levels_source = get_val(row, "value_labels")
-            levels_spec_override = {"format": "json_array", "value_key": "value", "label_key": "label"}
+            levels_spec_override = {
+                "format": "json_array",
+                "value_key": "value",
+                "label_key": "label",
+            }
             enum_values, enum_labels = parse_levels(levels_source, levels_spec_override)
         else:
             enum_values, enum_labels = parse_levels(levels_source, spec.get("levels"))
@@ -461,16 +473,26 @@ def clean_field_encoding(field: dict) -> list[dict]:
             return
         fixed = ftfy.fix_text(val)
         if fixed != val:
-            fixes.append({
-                "field": name, "key": key, "before": val, "after": fixed,
-                "unrecoverable": "�" in fixed,
-            })
+            fixes.append(
+                {
+                    "field": name,
+                    "key": key,
+                    "before": val,
+                    "after": fixed,
+                    "unrecoverable": "�" in fixed,
+                }
+            )
             return fixed
         if "�" in val:
-            fixes.append({
-                "field": name, "key": key, "before": val, "after": val,
-                "unrecoverable": True,
-            })
+            fixes.append(
+                {
+                    "field": name,
+                    "key": key,
+                    "before": val,
+                    "after": val,
+                    "unrecoverable": True,
+                }
+            )
         return val
 
     for key in ENCODING_FIX_KEYS:
@@ -490,9 +512,23 @@ def clean_field_encoding(field: dict) -> list[dict]:
 VALID_VLMD_TYPES = {"number", "integer", "string", "boolean", "date", "datetime", "time"}
 
 PLACEHOLDER_DESCRIPTIONS = {
-    "n/a", "na", "tbd", "see codebook", "see codebook.", "see notes", "see note",
-    "no description", "none", "missing", "unknown", "placeholder", "todo", "fill in",
-    "to be determined", "not available", "not applicable",
+    "n/a",
+    "na",
+    "tbd",
+    "see codebook",
+    "see codebook.",
+    "see notes",
+    "see note",
+    "no description",
+    "none",
+    "missing",
+    "unknown",
+    "placeholder",
+    "todo",
+    "fill in",
+    "to be determined",
+    "not available",
+    "not applicable",
 }
 
 # Descriptions at or below this word count are flagged even if they don't match
@@ -527,6 +563,7 @@ def flag_field(field: dict) -> list[str]:
 
 
 # ── Column resolution (pre-compute once per file) ────────────────────────────
+
 
 def resolve_all_columns(spec: dict, df_columns: set[str]) -> dict:
     """Resolve all column specs from the format YAML to actual column names."""
@@ -586,8 +623,10 @@ def check_unaccounted_columns(spec: dict, resolved: dict, df_columns: set[str]) 
 
     stale = sorted(excluded_names - df_columns)
     if stale:
-        print(f"  NOTE: excluded_columns lists column(s) not present in this input: {stale}",
-              flush=True)
+        print(
+            f"  NOTE: excluded_columns lists column(s) not present in this input: {stale}",
+            flush=True,
+        )
 
     if spec.get("capture_unmapped_as_custom"):
         return  # every unmapped column is captured automatically — nothing silently dropped
@@ -601,14 +640,18 @@ def check_unaccounted_columns(spec: dict, resolved: dict, df_columns: set[str]) 
             stream=sys.stderr,
         )
         print(f"  {warning} {unaccounted}", file=sys.stderr, flush=True)
-        print("    Add each to custom_columns (to keep it) or excluded_columns "
-              "(with a reason, to document why it's dropped).", file=sys.stderr, flush=True)
+        print(
+            "    Add each to custom_columns (to keep it) or excluded_columns "
+            "(with a reason, to document why it's dropped).",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 # ── Main convert function ─────────────────────────────────────────────────────
 
-def convert(input_path: str, format_yaml: str,
-            output_fields: str, output_lint: str) -> int:
+
+def convert(input_path: str, format_yaml: str, output_fields: str, output_lint: str) -> int:
     spec = yaml.safe_load(Path(format_yaml).read_text(encoding="utf-8"))
     format_name = spec.get("format_name", Path(format_yaml).stem)
     print(f"Format: {format_name}", flush=True)
@@ -619,8 +662,9 @@ def convert(input_path: str, format_yaml: str,
         df = read_stata(input_path)
     else:
         encoding = _detect_encoding(input_path)
-        df = pd.read_csv(input_path, dtype=str, keep_default_na=False,
-                         low_memory=False, encoding=encoding)
+        df = pd.read_csv(
+            input_path, dtype=str, keep_default_na=False, low_memory=False, encoding=encoding
+        )
 
     print(f"Reading {input_path} ...", flush=True)
     print(f"  {len(df):,} rows, {len(df.columns)} columns", flush=True)
@@ -633,10 +677,13 @@ def convert(input_path: str, format_yaml: str,
         print(f"ERROR: could not find a name column in {list(df.columns)}", file=sys.stderr)
         return 1
 
-    print(f"  Column mapping: name={resolved['name_column']!r}, "
-          f"description={resolved['description_column']!r}, "
-          f"type={resolved['type_mapping_column']!r}, "
-          f"section={resolved['section_primary_column']!r}", flush=True)
+    print(
+        f"  Column mapping: name={resolved['name_column']!r}, "
+        f"description={resolved['description_column']!r}, "
+        f"type={resolved['type_mapping_column']!r}, "
+        f"section={resolved['section_primary_column']!r}",
+        flush=True,
+    )
 
     check_unaccounted_columns(spec, resolved, df_cols)
 
@@ -651,12 +698,14 @@ def convert(input_path: str, format_yaml: str,
         issues = flag_field(field)
         fields.append(field)
         if issues:
-            lint_records.append({
-                "name": field["name"],
-                "issues": issues,
-                "source_row": row_dict,
-                "vlmd_field_draft": field,
-            })
+            lint_records.append(
+                {
+                    "name": field["name"],
+                    "issues": issues,
+                    "source_row": row_dict,
+                    "vlmd_field_draft": field,
+                }
+            )
 
     Path(output_fields).write_text(
         json.dumps(fields, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -672,10 +721,12 @@ def convert(input_path: str, format_yaml: str,
         encoding_fixes_path.write_text(
             json.dumps(encoding_fixes, indent=2, ensure_ascii=False), encoding="utf-8"
         )
-        print(f"  Encoding fixes: {len(repaired)} field value(s) auto-corrected "
-              f"(mojibake/smart quotes — no LLM used); {len(unrecoverable)} have "
-              f"unrecoverable corruption flagged for review. See {encoding_fixes_path}",
-              flush=True)
+        print(
+            f"  Encoding fixes: {len(repaired)} field value(s) auto-corrected "
+            f"(mojibake/smart quotes — no LLM used); {len(unrecoverable)} have "
+            f"unrecoverable corruption flagged for review. See {encoding_fixes_path}",
+            flush=True,
+        )
 
     names = [f["name"] for f in fields]
     dupes = len(names) - len(set(names))
