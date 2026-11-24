@@ -181,8 +181,11 @@ def fixup(
             skipped_description_only += 1
 
     if skipped_description_only:
-        print(f"  {skipped_description_only} field(s) flagged only for description-content "
-              "issues — left for human review, not sent to the LLM.", flush=True)
+        print(
+            f"  {skipped_description_only} field(s) flagged only for description-content "
+            "issues — left for human review, not sent to the LLM.",
+            flush=True,
+        )
 
     if not fixable_records:
         print("No fixable (non-description) lint records.", flush=True)
