@@ -212,7 +212,7 @@ def extract(pdf_path: str, output_csv: str, model_key: str = DEFAULT_MODEL) -> i
     except ImportError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- pdfplumber raises many types for unreadable PDFs
         print(f"ERROR reading PDF: {e}", file=sys.stderr)
         return 1
 
