@@ -10,13 +10,15 @@ A pipeline that converts research data dictionaries (HBCD CSV, REDCap exports, S
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt      # requirements.txt + pinned Ruff; pyreadstat separately for .dta input
+pip install -r requirements-dev.txt      # requirements.txt + pytest + pinned Ruff; pyreadstat separately for .dta input
 cp .env.template .env                    # only needed for LLM steps
 
-# Format Python code before committing
-python -m ruff format .
+# Tests, lint and formatting: what CI runs. All offline, no credentials.
+pytest
+python -m ruff check .
+python -m ruff format .                  # CI runs `ruff format --check .`
 
-# Smoke test — the only automated check in the repo. Exit 0 = all three examples convert and pass schema validation.
+# The example conversions with human-readable output. Exit 0 = all three examples convert and pass schema validation.
 python examples/run_examples.py
 
 # Full pipeline on a real file
@@ -35,9 +37,9 @@ python chat_pipeline.py --input demo/demo_dd.csv --hdp-id DEMO001
 python probe_azure.py
 ```
 
-Python code (including Python blocks in Markdown files) is formatted with `python -m ruff format .`, configured in `ruff.toml`, using the Ruff version pinned in `requirements-dev.txt`. Before bumping that pin or touching `.git-blame-ignore-revs`, read "Bump Ruff deliberately" and the pull request rules in `CONTRIBUTING.md`.
+`.github/workflows/ci.yml` runs Ruff (`ruff check`, `ruff format --check`) and `pytest` on Python 3.11 on every PR and push to `main`. Ruff formats Python code, including Python blocks in Markdown files, and is configured in `ruff.toml` and pinned in `requirements-dev.txt` and the workflow; run it as `python -m ruff` so the pinned version runs. Before bumping that pin or touching `.git-blame-ignore-revs`, read "Bump Ruff deliberately" and the pull request rules in `CONTRIBUTING.md`. A deliberate `except Exception` at a stage boundary (LLM call, validator, PDF read) carries `# noqa: BLE001` with a reason, because narrowing it would turn an exit code into a traceback.
 
-There is no test suite. `examples/run_examples.py` runs `--skip-llm --no-detect` against the three synthetic CSVs in `examples/` and validates the output; run it after touching any stage. If `healdata_utils` can't be imported, validation fails rather than being skipped, so a broken environment shows up as FAIL (exit 2), not a false PASS. `work/`, `output/` and `examples/output/` are gitignored scratch.
+Tests live in `tests/`. Before adding one, read `tests/AGENTS.md`, which says where a test goes, how test files are organized, and how to keep test runs from writing into the repo. If `healdata_utils` can't be imported, validation fails rather than being skipped, so a broken environment shows up as FAIL (exit 2), not a false PASS. `work/`, `output/` and `examples/output/` are gitignored scratch.
 
 ## Architecture
 
@@ -57,4 +59,4 @@ There is no test suite. `examples/run_examples.py` runs `--skip-llm --no-detect`
 
 ## Documentation
 
-`CONTRIBUTING.md` lists what a pull request needs before review (Ruff, the examples, README updates); keep it in sync with the commands above. `README.md` is the user manual and should stay in sync with CLI flags, format YAML anatomy, `levels.format` values, the models table, and exit codes. When changing any of those, update the README in the same change.
+`CONTRIBUTING.md` lists what a pull request needs before review (Ruff, pytest, README updates); keep it in sync with the commands above. `README.md` is the user manual and should stay in sync with CLI flags, format YAML anatomy, `levels.format` values, the models table, and exit codes. When changing any of those, update the README in the same change.

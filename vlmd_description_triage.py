@@ -72,7 +72,7 @@ def triage(
             saved = json.loads(Path(checkpoint_path).read_text(encoding="utf-8"))
             if saved.get("_fingerprint") == fingerprint:
                 checkpoint = {k: v for k, v in saved.items() if not k.startswith("_")}
-        except Exception:
+        except (OSError, ValueError, AttributeError):
             checkpoint = {}
 
     chunks = [items[i : i + MAX_ROWS_PER_CHUNK] for i in range(0, len(items), MAX_ROWS_PER_CHUNK)]
@@ -98,7 +98,8 @@ def triage(
         parsed = parse_json_response(raw)
         if not isinstance(parsed, list):
             print(flush=True)
-            raise ValueError(f"Expected JSON array from triage, got {type(parsed).__name__}")
+            # Malformed LLM output is a bad value, not a caller passing the wrong type.
+            raise ValueError(f"Expected JSON array from triage, got {type(parsed).__name__}")  # noqa: TRY004
 
         for entry in parsed:
             if entry.get("decision") not in ("send_to_llm", "leave_as_is", "flag_for_human"):

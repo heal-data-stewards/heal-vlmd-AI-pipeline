@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 from openai import AzureOpenAI, OpenAI
 
@@ -56,8 +57,7 @@ else:
         "2024-10-01-preview",
     ]
     base = ENDPOINT
-    if base.endswith("/openai"):
-        base = base[: -len("/openai")]
+    base = base.removesuffix("/openai")
     print(f"Detected classic Azure endpoint — base: {base}\n")
 
     found_version = None
