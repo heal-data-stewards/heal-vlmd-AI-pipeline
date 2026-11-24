@@ -562,6 +562,7 @@ detection:
 1. Create `formats/{format_name}.yaml` following the anatomy above.
 2. Add a format-specific fixup prompt in `prompts/` if needed (or reuse `generic_fixup_prompt.md`).
 3. Verify detection scoring: `python vlmd_detect.py --input sample.csv --no-llm`
+4. Run `pytest`: `tests/test_detect.py` checks that every format YAML loads and has a unique `format_name`.
 
 No Python changes required for standard column patterns.
 
@@ -642,7 +643,7 @@ python run_pipeline.py \
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setting up a development environment, formatting with Ruff, and what a pull request needs before review.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setting up a development environment, running the tests, linting and formatting with Ruff, and what a pull request needs before review. GitHub Actions (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check` and `pytest` on every pull request.
 
 ---
 
@@ -781,11 +782,13 @@ heal-vlmd-AI-pipeline/
 ├── CONTRIBUTING.md              Development setup and what a pull request needs before review
 ├── NDAR_CONVERSION_NOTES.md     Design notes for a future NDAR converter (nothing implemented yet)
 ├── requirements.txt             Python dependencies
-├── requirements-dev.txt         requirements.txt + pinned Ruff
-├── ruff.toml                    Ruff config
+├── requirements-dev.txt         requirements.txt + pytest + pinned Ruff
+├── ruff.toml                    Ruff lint and format config
+├── pytest.ini                   pytest config (test paths, sys.path)
 ├── .env.template                Copy to .env and fill in API keys
 ├── .gitignore
 ├── .git-blame-ignore-revs       Bulk reformat commits for git blame to skip
+├── .github/workflows/ci.yml     CI: Ruff + pytest on every PR
 │
 ├── run_pipeline.py              One-command orchestrator (pure Python)
 ├── chat_pipeline.py             Conversational prototype: same stages as a resumable generator
@@ -820,6 +823,8 @@ heal-vlmd-AI-pipeline/
 │   ├── generic_fixup_prompt.md
 │   ├── pdf_extract_prompt.md
 │   └── description_triage_prompt.md
+│
+├── tests/                       pytest suite (offline; run by CI)
 │
 ├── demo/                        Small CSVs for driving chat_pipeline.py by hand
 │

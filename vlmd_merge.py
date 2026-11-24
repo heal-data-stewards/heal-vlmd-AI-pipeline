@@ -188,7 +188,7 @@ def validate_output(vlmd_doc: dict) -> bool:
             if len(errors) > 5:
                 print(f"    ... and {len(errors) - 5} more", flush=True)
         return is_valid
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         # Fail closed: a validator that can't run (e.g. healdata_utils missing
         # a transitive dependency) must not let unvalidated output through.
         print(f"  ERROR: validation could not run ({e})", flush=True)
