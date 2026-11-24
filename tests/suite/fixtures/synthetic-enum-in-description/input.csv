@@ -1,0 +1,6 @@
+Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic (Show field only if...),Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation
+record_id,survey,,text,Record ID,,,,,,,,,,,,,
+smoking,survey,,text,"Smoking status (1 = never, 2 = former, 3 = current)",,,,,,,,,,,,,
+pain,survey,,text,"Pain level: 0=none, 10=worst possible",,,,,,,,,,,,,
+arm,survey,,text,Study arm (A: control; B: treatment),,,,,,,,,,,,,
+sex,survey,,radio,Sex at birth,"1, Female | 2, Male",,,,,,,,,,,,

@@ -38,7 +38,7 @@ type:
   enum-variants: Several encodings of value labels (1,Yes|2,No / 1=Yes;2=No / newline)
   oversized-enum: Long code list that should be a min/max range
   missing-codes: Codes like -9, 999, NA mixed in with real values
-  type-mismatch: Declared type disagrees with the values or the validation column
+  type-mismatch: Type must follow the validation column (date_mdy, integer, zipcode, ...), not only the field type
   date-format: Date or time format strings
 names:
   duplicate-names: Same variable name repeated within or across sheets

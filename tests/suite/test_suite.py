@@ -28,13 +28,18 @@ def _params():
 
 
 @pytest.fixture(scope="session")
-def runs(tmp_path_factory):
-    """Each case is run through the pipeline once and shared by all of its checks."""
+def runs(tmp_path_factory, request):
+    """Each case is run once and shared by all of its checks: offline cases through the
+    offline stages, llm cases through the whole pipeline with the LLM steps on."""
     cache: dict[str, dict] = {}
 
     def get(case):
         if case["id"] not in cache:
-            cache[case["id"]] = suite_lib.run_offline(case, tmp_path_factory.mktemp(case["id"]))
+            work = tmp_path_factory.mktemp(case["id"])
+            if case.get("tier", "offline") == "llm":
+                cache[case["id"]] = suite_lib.run_pipeline_case(case, work, skip_llm=False)
+            else:
+                cache[case["id"]] = suite_lib.run_offline(case, work)
         return cache[case["id"]]
 
     return get
@@ -47,11 +52,31 @@ def test_check(case, check_id, runs, request):
         pytest.skip("needs LLM credentials; pass --run-llm")
     if tier == "local" and not request.config.getoption("--run-local"):
         pytest.skip("needs local source files; pass --run-local")
-    if tier != "offline":
-        pytest.skip(f"tier {tier!r} has no runner yet")
+    if tier == "local":
+        pytest.skip("tier 'local' has no runner yet")
 
     errors = suite_lib.check_one(case, runs(case), check_id)
     assert not errors, "; ".join(errors)
+
+
+def test_pipeline_runner_without_llm(tmp_path):
+    """The runner used for tier-llm cases works end to end; checked with the LLM steps off."""
+    case = next(c for c in suite_lib.load_manifest() if c["id"] == "redcap-slider-minimal")
+    run = suite_lib.run_pipeline_case(case, tmp_path, skip_llm=True)
+    assert run["pipeline_rc"] in (0, 2), run
+    assert len(run["fields"]) == 11
+    assert not suite_lib.check_one(case, run, "fields_out")
+
+
+def test_synthetic_fixtures_match_generator():
+    import make_synthetic
+
+    stale = [
+        case_id
+        for case_id, gen in make_synthetic.GENERATORS.items()
+        if (make_synthetic.FIXTURES / case_id / "input.csv").read_bytes() != gen()
+    ]
+    assert not stale, f"edit make_synthetic.py, not the fixtures; out of date: {stale}"
 
 
 def test_manifest_is_consistent():
@@ -68,7 +93,7 @@ def test_manifest_is_consistent():
             assert case.get("xfail_reason"), f"{case['id']}: xfail needs xfail_reason"
         stale = set(case.get("xfail") or {}) - set(suite_lib.check_ids(case))
         assert not stale, f"{case['id']}: xfail entries match no check: {stale}"
-        if case.get("tier", "offline") == "offline":
+        if case.get("tier", "offline") != "local":
             assert suite_lib.fixture_path(case).exists(), f"{case['id']}: fixture file missing"
 
 

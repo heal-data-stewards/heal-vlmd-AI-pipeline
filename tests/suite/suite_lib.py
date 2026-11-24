@@ -74,6 +74,45 @@ def run_offline(case: dict, work: Path) -> dict:
     return run
 
 
+def run_pipeline_case(case: dict, work: Path, skip_llm: bool) -> dict:
+    """Run one fixture through the whole pipeline (`run_pipeline.run`), LLM steps included
+    unless skip_llm, and return the final VLMD fields.
+
+    Only properties of the final output can be checked this way (no detection result, no
+    lint report). skip_llm=True is how the runner itself is tested without credentials.
+    """
+    import run_pipeline
+
+    work.mkdir(parents=True, exist_ok=True)
+    out = work / "out"
+    saved_work_dir = run_pipeline.WORK_DIR
+    run_pipeline.WORK_DIR = work / "work"  # keep run state out of the repo's work/
+    try:
+        rc = run_pipeline.run(
+            input_file=str(fixture_path(case)),
+            format_yaml=None,
+            appl_id="suite",
+            hdp_id="",
+            title=case["id"],
+            study_label="suite",
+            name=case["id"],
+            skip_llm=skip_llm,
+            no_detect=False,
+            output_dir=out,
+            no_confirm=True,
+            yes=True,
+            sheet=case.get("sheet"),
+        )
+    finally:
+        run_pipeline.WORK_DIR = saved_work_dir
+
+    result: dict = {"pipeline_rc": rc, "lint_rc": rc, "detect": {}}
+    vlmd = out / "vlmd" / case["id"] / f"{case['id']}.vlmd.json"
+    if vlmd.exists():
+        result["fields"] = json.loads(vlmd.read_text(encoding="utf-8"))["fields"]
+    return result
+
+
 def _as_list(v) -> list:
     return v if isinstance(v, list) else [v]
 
@@ -102,6 +141,13 @@ def check_field(name: str, want: dict, field: dict | None) -> list[str]:
         got = (field.get("enumLabels") or {}).get(value)
         if got != label:
             errs.append(f"field {name!r}: enumLabels[{value!r}] is {got!r}, expected {label!r}")
+    if want.get("description_empty") and (field.get("description") or "").strip():
+        errs.append(f"field {name!r}: description was filled in: {field['description'][:60]!r}")
+    if want.get("no_required") and (field.get("constraints") or {}).get("required"):
+        errs.append(f"field {name!r}: constraints.required was set")
+    for text in want.get("description_lacks", []):
+        if text in (field.get("description") or ""):
+            errs.append(f"field {name!r}: description contains {text!r}")
     for text in want.get("absent_text", []):
         if text in blob:
             errs.append(f"field {name!r}: contains {text!r}")
